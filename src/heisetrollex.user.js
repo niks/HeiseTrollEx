@@ -1,9 +1,14 @@
 // ==UserScript==
-// @name          Heise Trollex Version 0.31
-// @namespace     http://diveintogreasemonkey.org/download/
-// @description   Skript zum Entfernen von (rot markierten) Trollbeiträgen in den Heiseforen
+// @name          Heise Trollex Version 0.40
+// @namespace     http://www.informatik.uni-freiburg.de/schnllm~
+// @description   Skript zum Entfernen von (rot markierten) Trollbeitraegen in den Heiseforen
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
+
+// Originally programed from Hannes Planatscher © 2005, 2006 (http://www.planatscher.net/)
+// Modified from Michael Schnell © 2007, 2008 (http://www.informatik.uni-freiburg.de/~schnellm/)
+
+// This Script is unter the Creative Commons Attribution 2.0 Licenes (http://creativecommons.org/licenses/by/2.0/)
 
 function increasetreshold(event)  {
 	acttresh = GM_getValue("treshold", -50);
@@ -18,7 +23,7 @@ function decreasetreshold(event)  {
 }
 
 function addtoignorelist(user) {
-        iliststr = GM_getValue("ignorelist", "");
+	iliststr = GM_getValue("ignorelist", "");
         iliststr = iliststr + "," + user;
         GM_setValue("ignorelist",iliststr);
         window.location.reload();
@@ -26,7 +31,7 @@ function addtoignorelist(user) {
 
 
 function removefromignorelist(user) {
-        iliststr = GM_getValue("ignorelist", "");
+	iliststr = GM_getValue("ignorelist", "");
         ilist = ignoreliststr.split(",")
         iliststrnew = "";
         for (i =  0; i < ilist.length; i++) {
@@ -69,7 +74,8 @@ var trollvisbile = GM_getValue("trollvisbile",false);
 var allImages, thisImage;
 var treshold = GM_getValue("treshold", -50);
 var ignoreliststr = GM_getValue("ignorelist", "");
-var ignorelist = ignoreliststr.split(",")
+var ignorelist = ignoreliststr.split(",");
+
 var blocked = 0;
 
 function switchvisibilty() {
@@ -102,65 +108,75 @@ for (i = 0; i < ignorelist.length; i++) {
 	}
 }
 
+
 allImages = document.evaluate("//img[contains(@title,'Beitragsbewertung: ')]", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
 
 var trolltablecontainer = document.createElement('div');
-var tablerows = document.createElement('table');
-tablerows.setAttribute('class','forum_inhalt');
+var tablerows = document.createElement('ul');
+tablerows.setAttribute('class', 'thread_tree');
 
- //GM_setValue("ignorelist","");
+
 /*
    from "Heise Forum Sweeper" http://phpfi.com/69565
 */
 
- var strIgnored = String.fromCharCode(8211, 8211, 8211);
- var allInhaltTables, forum_inhalt;
-  allInhaltTables = document.evaluate(
-    "//table[@class='forum_inhalt']",
+
+var strIgnored = String.fromCharCode(8211, 8211, 8211);
+var allInhaltTables, forum_inhalt;
+allInhaltTables = document.evaluate(
+    "//li[div/@class='hover']",
     document,
     null,
     XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
     null);
-  forum_inhalt = allInhaltTables.snapshotItem(0);
 
- var users = new Array();
+var users = new Array();
 
-  for (var i = 0; i < forum_inhalt.rows.length; i=(i+1)) {
-    var row = forum_inhalt.rows.item(i);
-    if (row.cells.item(4) != null){
-    var cellUser = row.cells.item(4).firstChild;
-      if (cellUser.nodeType == 3) {
-        var username = cellUser.nodeValue;
+var first = true;
 
-	removeit = false;
-        if (username.substr(0, 3) == strIgnored) {
-           removeit = true;
-        }
-        if (inarray(ignorelist,  username)) {
-           removeit = true;
-        }
-        if (removeit) {
-           tablerows.appendChild(row);
-    	   blocked++;
+for (var i = 0; i < allInhaltTables.snapshotLength; i++) {
+  var row = allInhaltTables.snapshotItem(i);
+  
+  var nameRes = document.evaluate( "./div/div[@class='thread_user']" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+  var nameNode = nameRes.snapshotItem(0);
+  var username = nameNode.innerHTML;
+  
+  removeit = false;
+  if (username.substr(0, 3) == strIgnored) {
+    removeit = true;
+  }
+  if (inarray(ignorelist,  username)) {
+    removeit = true;
+  }
+  if (removeit) {
+    tablerows.appendChild(row);
+    blocked++;
 
-        }
-          button = document.createElement('b');
-          button.href = null;
-          button.addEventListener('click', factoryadd(username), true);
-	  button.innerHTML = " [i]";
-	  button.setAttribute("style", "text-decoration:none;  font-weight:normal; color: blue; cursor: hand; cursor: pointer; ");
-	  row.cells.item(4).appendChild(button);
-      	if (removeit) i = i-1;
-      }
-      }
-   }
+    button = document.createElement('span');
+    button.href = null;
+    button.addEventListener('click', factoryremove(username), true);
+    button.innerHTML = " [n]";
+    button.setAttribute("style", "text-decoration:none;  font-weight:normal; color: blue; cursor: hand; cursor: pointer; ");
+    nameNode.appendChild(button);
+  }else{
+    button = document.createElement('span');
+    button.href = null;
+    button.addEventListener('click', factoryadd(username), true);
+    button.innerHTML = " [i]";
+    button.setAttribute("style", "text-decoration:none;  font-weight:normal; color: blue; cursor: hand; cursor: pointer; ");
+    nameNode.appendChild(button);
+  }
+}
+
+
 
 for (var i = 0; i < allImages.snapshotLength; i++) {
     var tablerow, bewvalue;
     thisImage = allImages.snapshotItem(i);
     bewvalue = parseInt(thisImage.title.substr(19,4));
+        
     if (bewvalue <= treshold) {
-    	tablerow = thisImage.parentNode.parentNode.parentNode;
+    	tablerow = thisImage.parentNode.parentNode.parentNode.parentNode;
     	tablerows.appendChild(tablerow);
     	blocked++;
     }
@@ -169,20 +185,26 @@ for (var i = 0; i < allImages.snapshotLength; i++) {
 
 trolltablecontainer.appendChild(tablerows);
 trolltablecontainer.setAttribute('id','trolltable');
-trolltablecontainer.setAttribute('style','visibility:hidden');
 
-var untereZeil  = document.evaluate( "//table[@class='forum_aktion']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+var untereZeil  = document.evaluate( "//ul[@class='forum_aktion']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
 var untereZeile = untereZeil.snapshotItem(0);
-var newElement = document.createElement('b');
-newElement.setAttribute("style", "text-decoration:none; font-weight:bold; cursor: hand; cursor: pointer; ");
-newElement.innerHTML = blocked + ' Beiträge geblockt.';
-newElement.onclick =  switchvisibilty;
 
+
+var newElement = document.createElement('span');
+newElement.setAttribute("style", "text-decoration:none; font-weight:bold; cursor: hand; cursor: pointer; ");
+if(blocked==1){
+  newElement.appendChild(document.createTextNode("Heise TrollEx hat 1 Beitrag geblockt:"));
+}else{
+  newElement.appendChild(document.createTextNode("Heise TrollEx hat " +blocked + " Beiträge geblockt:"));
+}
+newElement.appendChild(document.createElement('br'));
+newElement.appendChild(document.createElement('br'));
+newElement.addEventListener('click', switchvisibilty, true);
 heiset = document.createTextNode(" Schwelle:  ");
 
 container = document.createElement('div');
 button1 = document.createElement('b');
-button1.onclick = increasetreshold;
+button1.addEventListener('click', increasetreshold, true);
 button1.innerHTML = '+';
 button1.setAttribute("style", "font-family: courier;font-size: 16px;text-decoration:none; font-weight:bolder; color: blue; cursor: hand; cursor: pointer; ");
 
@@ -190,7 +212,9 @@ tresholdview = document.createTextNode(" [" + treshold + " %] ");
 
 button2 = document.createElement('b');
 
-button2.onclick = decreasetreshold;
+
+button2.addEventListener('click', decreasetreshold, true);
+
 button2.innerHTML = "-";
 
 button2.setAttribute("style", "font-family: courier; font-size: 16px;text-decoration:none; font-weight:bolder; color: blue; cursor: hand; cursor: pointer; ");
@@ -203,12 +227,16 @@ container.appendChild(button1);
 
 trollistbutton =  document.createElement('b');
 trollistbutton.setAttribute("style", "text-decoration:none; font-weight:bold; cursor: hand; cursor: pointer; ");
-trollistbutton.innerHTML = "Trolle entfernen :";
-trollistbutton.onclick =  switchvisibiltytl;
+trollistbutton.innerHTML = "Trolle entfernen:";
+trollistbutton.addEventListener('click', switchvisibiltytl, true);
 
+trolltablecontainer.appendChild(document.createElement('br'));
 trolltablecontainer.appendChild(container);
+trolltablecontainer.appendChild(document.createElement('br'));
 trolltablecontainer.appendChild(trollistbutton);
 trolltablecontainer.appendChild(trolllist);
+
+
 
 untereZeile.parentNode.insertBefore(newElement,untereZeile.nextSilbing);
 untereZeile.parentNode.insertBefore(trolltablecontainer,untereZeile.nextSilbing);
