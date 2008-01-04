@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name          Heise Trollex Version 0.40
+// @name          Heise Trollex Version 0.41
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
 // @description   Skript zum Entfernen von (rot markierten) Trollbeitraegen in den Heiseforen
 // @include       http://www.heise.de/*foren/*
@@ -100,21 +100,26 @@ trolllist.appendChild(document.createTextNode(""));
 
 for (i = 0; i < ignorelist.length; i++) {
 	if (ignorelist[i] != "") {
-		button1 = document.createElement('li');
+		
+		line = document.createElement('li');
+		line.innerHTML = ignorelist[i];
+		button1 = document.createElement('span');		
 		button1.addEventListener('click', factoryremove(ignorelist[i]), true);
-		button1.innerHTML = "" + ignorelist[i];
+		button1.innerHTML = "[entfernen]";
 		button1.setAttribute("style", "text-decoration:none; font-weight:normal; color: blue; cursor: hand; cursor: pointer;");
-		trolllist.appendChild(button1);
+		button1.setAttribute("title",ignorelist[i] +" von der Ignoreliste entfernen");
+		line.appendChild(button1);
+		trolllist.appendChild(line);
 	}
 }
 
 
-allImages = document.evaluate("//img[contains(@title,'Beitragsbewertung: ')]", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+allImages = document.evaluate("//div[@class='thread_votechart']//img[contains(@title,'Beitragsbewertung: ')]", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+
 
 var trolltablecontainer = document.createElement('div');
 var tablerows = document.createElement('ul');
 tablerows.setAttribute('class', 'thread_tree');
-
 
 /*
    from "Heise Forum Sweeper" http://phpfi.com/69565
@@ -124,7 +129,7 @@ tablerows.setAttribute('class', 'thread_tree');
 var strIgnored = String.fromCharCode(8211, 8211, 8211);
 var allInhaltTables, forum_inhalt;
 allInhaltTables = document.evaluate(
-    "//li[div/@class='hover']",
+    "//li[div/@class='hover' or div/@class='hover_line']",
     document,
     null,
     XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
@@ -141,14 +146,9 @@ for (var i = 0; i < allInhaltTables.snapshotLength; i++) {
   var nameNode = nameRes.snapshotItem(0);
   var username = nameNode.innerHTML;
   
-  removeit = false;
-  if (username.substr(0, 3) == strIgnored) {
-    removeit = true;
-  }
-  if (inarray(ignorelist,  username)) {
-    removeit = true;
-  }
-  if (removeit) {
+
+  if (inarray(ignorelist,  username)) { 
+    // remove this subthread and add an "don't ignore" Button
     tablerows.appendChild(row);
     blocked++;
 
@@ -157,14 +157,17 @@ for (var i = 0; i < allInhaltTables.snapshotLength; i++) {
     button.addEventListener('click', factoryremove(username), true);
     button.innerHTML = " [n]";
     button.setAttribute("style", "text-decoration:none;  font-weight:normal; color: blue; cursor: hand; cursor: pointer; ");
-    nameNode.appendChild(button);
+    button.setAttribute("title", username+ " nicht mehr ignorieren");
+    nameNode.insertBefore(button, nameNode.firstChild);
   }else{
+  	// do not remove the subthread but add a ignore button
     button = document.createElement('span');
     button.href = null;
     button.addEventListener('click', factoryadd(username), true);
     button.innerHTML = " [i]";
     button.setAttribute("style", "text-decoration:none;  font-weight:normal; color: blue; cursor: hand; cursor: pointer; ");
-    nameNode.appendChild(button);
+    button.setAttribute("title", username+ " auf die Ignoreliste setzen");
+    nameNode.insertBefore(button, nameNode.firstChild);
   }
 }
 
@@ -174,9 +177,13 @@ for (var i = 0; i < allImages.snapshotLength; i++) {
     var tablerow, bewvalue;
     thisImage = allImages.snapshotItem(i);
     bewvalue = parseInt(thisImage.title.substr(19,4));
-        
-    if (bewvalue <= treshold) {
+    
+    parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread]" ,thisImage , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+    parentMoved = (parentMovedSearch.snapshotLength > 0);
+    
+    if (!parentMoved && bewvalue <= treshold) {
     	tablerow = thisImage.parentNode.parentNode.parentNode.parentNode;
+    	tablerow.setAttribute("trollex_moved_thread", "true");
     	tablerows.appendChild(tablerow);
     	blocked++;
     }
@@ -192,15 +199,20 @@ var untereZeile = untereZeil.snapshotItem(0);
 
 var newElement = document.createElement('span');
 newElement.setAttribute("style", "text-decoration:none; font-weight:bold; cursor: hand; cursor: pointer; ");
-if(blocked==1){
-  newElement.appendChild(document.createTextNode("Heise TrollEx hat 1 Beitrag geblockt:"));
+
+var blockedThreads;
+if(blocked==0){
+  blockedThreads = "Heise TrollEx hat keine Beiträge ausgefiltert.";
+}else if(blocked==1){
+  blockedThreads = "Heise TrollEx hat einen Thread ausgefiltert:";
 }else{
-  newElement.appendChild(document.createTextNode("Heise TrollEx hat " +blocked + " Beiträge geblockt:"));
+  blockedThreads = "Heise TrollEx hat " +blocked + " Beiträge ausgefiltert:";
 }
+newElement.appendChild(document.createTextNode(blockedThreads));
 newElement.appendChild(document.createElement('br'));
 newElement.appendChild(document.createElement('br'));
 newElement.addEventListener('click', switchvisibilty, true);
-heiset = document.createTextNode(" Schwelle:  ");
+heiset = document.createTextNode(" Schwellwert:  ");
 
 container = document.createElement('div');
 button1 = document.createElement('b');
@@ -208,7 +220,7 @@ button1.addEventListener('click', increasetreshold, true);
 button1.innerHTML = '+';
 button1.setAttribute("style", "font-family: courier;font-size: 16px;text-decoration:none; font-weight:bolder; color: blue; cursor: hand; cursor: pointer; ");
 
-tresholdview = document.createTextNode(" [" + treshold + " %] ");
+tresholdview = document.createTextNode(" [ " + treshold + " %] ");
 
 button2 = document.createElement('b');
 
@@ -227,7 +239,16 @@ container.appendChild(button1);
 
 trollistbutton =  document.createElement('b');
 trollistbutton.setAttribute("style", "text-decoration:none; font-weight:bold; cursor: hand; cursor: pointer; ");
-trollistbutton.innerHTML = "Trolle entfernen:";
+
+var trollText;
+if(ignorelist.length == 1){
+  trollText = "Keine Trolle in der Ignorelist.";
+}else if(ignorelist.length == 2){
+  trollText = "Ein Troll in der Ignorelist:";
+}else {
+  trollText = (ignorelist.length-1) + " Trolle in der Ignorelist:";
+}
+trollistbutton.innerHTML = trollText;
 trollistbutton.addEventListener('click', switchvisibiltytl, true);
 
 trolltablecontainer.appendChild(document.createElement('br'));
