@@ -16,7 +16,7 @@
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersionDate = "30.01.2008 15:09:00";
+var trollExVersionDate = "30.01.2008 14:21:00";
 var trollExDisplayVersion = "0.80"
 var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
 var updateXML;
@@ -116,7 +116,7 @@ function checkForUpdates() {
 function updateVersionLoaded(responseDetails){
 	if (responseDetails.readyState==4) { 
 		if (responseDetails.status==200) {
-			var versionText = responseDetails.responseText.split(" ");
+			var versionText = responseDetails.responseText.split("\n");
 			var latestVersionDate = versionText[0];
 			var latestDisplayVersion = versionText[1];
 						
