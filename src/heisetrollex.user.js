@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name          Heise Trollex Version 0.50
+// @name          Heise TrollEx
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
-// @description   Skript zum Entfernen von (rot markierten) Trollbeitraegen in den Heiseforen
+// @description   Heise TrollEx Version 0.80. Erhöht den Komfort des Heise Forums.
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
 
@@ -10,317 +10,1234 @@
 
 // This Script is unter the Creative Commons Attribution 2.0 Licenes (http://creativecommons.org/licenses/by/2.0/)
 
-function increasethreshold(event)  {
-	currentThreshold = GM_getValue("threshold", -50);
-	GM_setValue("threshold", currentThreshold + 10);
-	window.location.reload();
-}
 
-function decreasethreshold(event)  {
-	currentThreshold = GM_getValue("threshold", -50);
-	GM_setValue("threshold", currentThreshold - 10);
-	window.location.reload();
-}
+// **  global variables **
 
-function addtoignorelist(user) {
-	iliststr = GM_getValue("ignorelist", "");
-        iliststr = iliststr + "," + user;
-        GM_setValue("ignorelist",iliststr);
-        window.location.reload();
-}
+var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
-function removefromignorelist(user) {
-	iliststr = GM_getValue("ignorelist", "");
-        ilist = iliststr.split(",")
-        iliststrnew = "";
-        for (i =  0; i < ilist.length; i++) {
-        	if  ((ilist[i] != user) && (ilist[i] != "") && (ilist[i] != " ")) {
-        		iliststrnew = iliststrnew + ilist[i] + ((i != ilist.length-1)? ",":"");
-        	}
-        }
-        GM_log(iliststrnew);
-        GM_setValue("ignorelist",iliststrnew);
-        window.location.reload();
-}
+// TrollEx version and update information
+var trollExVersion = 20080130;
+var trollExDisplayVersion = "0.80"
+var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
+var updateXML;
 
-function inarray(arr, value) {
-	for (var i = 0; i < arr.length; i++) {
-		if (arr[i]==value) return true;
+var now = new Date();
+var yesterday = new Date( now.getTime() - 24*3600*1000);
+var lastSucessfulUpdateTest = new Date(GM_getValue("TrollExLastSucessfulUpdate", yesterday.toGMTString() ));
+var checkAnyway = false;
+
+
+// sorting modes
+var threadSortModes = new Array();
+var tmp = new Object();
+tmp.name = "none";
+tmp.displayName = "Nicht sortieren";
+tmp.func = null;
+threadSortModes.push(tmp);
+
+tmp = new Object();
+tmp.name = "threadRating";
+tmp.displayName = "Nach Thread Bewertung";
+tmp.func = sortThreadRating;
+threadSortModes.push(tmp);
+
+tmp = new Object();
+tmp.name = "userRating";
+tmp.displayName = "Nach User Bewertung";
+tmp.func = sortUserRating;
+threadSortModes.push(tmp);
+
+tmp = new Object();
+tmp.name = "userThreadRating";
+tmp.displayName = "Erst nach User Bewertung, dann nach Thread Bewertung";
+tmp.func = sortUserThreadRating;
+threadSortModes.push(tmp);
+
+tmp = new Object();
+tmp.name = "threadUserRating";
+tmp.displayName = "Erst nach Thread Bewertung, dann nach User Bewertung";
+tmp.func = sortThreadUserRating;
+threadSortModes.push(tmp);
+
+
+var normalThreadsSortMode = getThreadsSortModeByName("userThreadRating");
+var badThreadsSortMode = getThreadsSortModeByName("threadRating");
+var badUserThreadsSortMode = getThreadsSortModeByName("userRating");
+
+var normalThreadsSortSubThreads = false;
+var badThreadsSortSubThreads = false;
+var badUserThreadsSortSubThreads = false;
+
+// "check now" button
+var checkNow = createButton("Jetzt überprüfen", "Suche nach Updates starten", function(){checkAnyway=true; checkForUpdates()});
+
+// TrollEx homepage link node.
+var trollExHP = document.createElement("a");
+trollExHP.href= "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/index.html";
+trollExHP.appendChild(document.createTextNode("TrollEx Homepage"));
+
+// more global variables
+var userRatings;
+var threshold = GM_getValue("TrollExThreshold", -50);
+var userRatingThreshold = GM_getValue("TrollExUserThreshold", -2);;
+
+var normalThreadsCount = 0;
+var badThreadsCount = 0;
+var badUserThreadsCount = 0;
+
+var mergePagesCount = parseInt(GM_getValue("TrollExMergePagesCount", 3));
+var pageCount;
+
+
+// ** functions **
+
+function checkForUpdates() {
+	now = new Date();
+	while(trollExUpdateContainer.firstChild){
+		trollExUpdateContainer.removeChild(trollExUpdateContainer.firstChild);
 	}
-	return false;
+	if(checkAnyway || (lastSucessfulUpdateTest.getTime() + 24 * 3600 * 1000) < (now.getTime())){	
+		GM_xmlhttpRequest({
+			method: 'GET',
+			url: latestVersionURL,
+			headers: {
+				'User-agent': 'Mozilla/4.0 (compatible) Greasemonkey',
+				'Accept': 'application/atom+xml,application/xml,text/xml',
+			},
+			onload: updateVersionLoaded
+		});
+	}else{
+		trollExUpdateContainer.appendChild(document.createTextNode("TrollEx ist aktuell (Version "+trollExDisplayVersion+"). "));
+		trollExUpdateContainer.appendChild(document.createTextNode(" Überprüft am "+ lastSucessfulUpdateTest.toLocaleString()+" "));
+		trollExUpdateContainer.appendChild(checkNow);
+	}
 }
 
-function factoryadd(v) {
+function updateVersionLoaded(responseDetails){
+	if (responseDetails.readyState==4) { 
+		if (responseDetails.status==200) {
+			var versionText = responseDetails.responseText.split(" ");
+			latestVersion = versionText[0];
+			latestDisplayVersion = versionText[1];
+			
+			if(parseInt(latestVersion) > parseInt(trollExVersion)){
+				// Update available!
+				var updates = document.createElement("span");
+				updates.appendChild(document.createTextNode("Es gibt Updates!"));
+				updates.setAttribute("style", "color:red; font-weight:bold");
+				trollExUpdateContainer.appendChild(updates);
+				trollExUpdateContainer.appendChild(document.createTextNode(" Diese Version = "+trollExDisplayVersion+" < "+ latestDisplayVersion+" = neueste Version. "));
+
+				
+			} else {
+				// up to date
+				lastSucessfulUpdateTest = now;
+				trollExUpdateContainer.appendChild(document.createTextNode("TrollEx ist aktuell (Version "+trollExDisplayVersion+"). "));
+
+				trollExUpdateContainer.appendChild(document.createTextNode(" Überprüft am "+ lastSucessfulUpdateTest.toLocaleString()+" "));
+				trollExUpdateContainer.appendChild(checkNow);
+
+				GM_setValue("TrollExLastSucessfulUpdate", lastSucessfulUpdateTest.toGMTString()); 
+			}
+		} else {
+		    alert("Problem retrieving XML data");
+		}
+	}
+}
+
+function getPage(pageNo){
+	var baseURL = window.location.href.replace(/\/hs-\d*/, "");
+	var hsNo = (pageNo-1)*16;
+	var pageURL = baseURL + "hs-"+hsNo+"/";
+
+	GM_xmlhttpRequest({
+		method: 'GET',
+		url: pageURL,
+		headers: {
+			'User-agent': 'Mozilla/4.0 (compatible) Greasemonkey',
+			'Accept': 'application/atom+xml,application/xml,text/xml',
+		},
+		onload: pageLoaded
+	});
+}
+
+function pageLoaded(responseDetails){
+	if (responseDetails.readyState==4) { 
+		if (responseDetails.status==200) {
+			var docNode = document.createElement("div");
+			var body = responseDetails.responseText;
+			lines = body.split("\n");
+			var start, end;
+			for(var i = 0; i < lines.length; i++){
+				if(lines[i].search(/<body.*>/) >= 0){
+					start= i+1;
+				}
+				if(lines[i].search(/<\/body>/) >= 0){
+					end = i-1;
+				}
+			}
+			body = lines.splice(start, end-start).join("\n");
+			docNode.innerHTML = body;
+			
+			var pageThreadListRes = document.evaluate(".//ul[@class='thread_tree']", docNode, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+			var pageThreadList = pageThreadListRes.snapshotItem(0);
+			moveThreads(pageThreadList);
+		} else {
+		    alert("Problem retrieving XML data");
+		}
+	}
+}
+
+function getPageCount(){
+	var navi = document.evaluate(".//ul[@class='forum_navi']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+	if(navi.snapshotLength > 0){
+		var maxNumber;
+		var tmp = window.location.href.replace(/.*\/hs-(\d*)\//, "$1");
+		if(tmp == window.location){
+			maxNumber = 0;
+		}else{
+			maxNumber = parseInt(tmp);
+		}
+		var links = document.evaluate(".//a", navi.snapshotItem(0), null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+		for(var i = 0; i < links.snapshotLength; i ++){
+			var tmp = links.snapshotItem(i).href.replace(/.*\/hs-(\d*)\//, "$1");
+			if(tmp != links.snapshotItem(i).href){
+				var number = parseInt(tmp);
+				if(number > maxNumber){
+					maxNumber = number;
+				}
+			}
+		}
+		var pageCount = maxNumber/16 +1;
+		return pageCount;
+	}else{
+		return -1;
+	}			
+}
+
+function getCurrentPage(){
+	var number;
+	var tmp = window.location.href.replace(/.*\/hs-(\d*)\//, "$1");
+	if(tmp == window.location){
+		number = 0;
+	}else{
+		number = parseInt(tmp);
+	}
+	return number/16 +1;
+}
+
+function updateForumNavis(){
+	var baseURL = window.location.href.replace(/\/hs-\d*/, "");
+
+	var navis = document.evaluate(".//ul[@class='forum_navi']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+	for(var n = 0; n < navis.snapshotLength; n++ ){
+		var navi = navis.snapshotItem(n);
+		var lis = document.evaluate(".//li", navi, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+
+		var expandAll;
+		// first: remove all navigation elements and remember where to insert new ones
+		for(var l = 0; l < lis.snapshotLength; l++){
+			li = lis.snapshotItem(l);
+			if(li.innerHTML.search(/Alles aufklappen/) < 0){
+				navi.removeChild(li);
+			}else{
+				expandAll = li;
+				break;
+			}
+		}
+		
+		// append "Seite"
+		var pageli = document.createElement("li");
+		pageli.innerHTML = "<b>Seite</b>  ";
+		navi.insertBefore(pageli, expandAll);
+		
+		var currentPage = getCurrentPage();
+		var li, link;
+				
+		if(pageCount <= mergePagesCount){
+			//Just one entry, no link
+			li = document.createElement("li");
+			if(pageCount == 1){
+				li.appendChild(document.createTextNode(" 1 "));			
+			}else{
+				li.appendChild(document.createTextNode(" 1-"+(pageCount)+" "));
+			}
+			navi.insertBefore(li, expandAll);
+		}else{
+		
+			if(currentPage -4* mergePagesCount >= 1 ){
+				var li = document.createElement("li");
+				var link = document.createElement("a");		
+				link.appendChild(document.createTextNode("1-"+(mergePagesCount)));
+				link.href=baseURL;
+				li.appendChild(link);
+				navi.insertBefore(li, expandAll);
+			}
+			if(currentPage -4* mergePagesCount > 1 ){
+				navi.insertBefore(document.createTextNode(" ... "), expandAll);
+			}else{
+				navi.insertBefore(document.createTextNode(" "), expandAll);			
+			}
+			
+			for(var relp = -3; relp< 0; relp++){
+				var p = currentPage + relp* mergePagesCount;
+				if(p >= 0){
+					var li = document.createElement("li");
+					var link = document.createElement("a");		
+					link.appendChild(document.createTextNode(p +"-"+(p+mergePagesCount-1)));
+					link.href=baseURL+ "hs-"+((p-1)*16)+"/";
+					li.appendChild(link);
+					navi.insertBefore(li, expandAll);
+					navi.insertBefore(document.createTextNode(" "), expandAll);
+				}
+			}
+			
+			li = document.createElement("li");
+			if(currentPage == pageCount){
+				li.appendChild(document.createTextNode(currentPage));
+			}else if(currentPage +mergePagesCount -1 > pageCount){
+				li.appendChild(document.createTextNode(currentPage+"-"+pageCount));
+			}else{
+				li.appendChild(document.createTextNode(currentPage+"-"+(currentPage+mergePagesCount-1)+" "));
+			}
+			navi.insertBefore(li, expandAll);
+			navi.insertBefore(document.createTextNode(" "), expandAll);
+			
+			for(var relp = 1; relp <= 3; relp++){
+				var p = currentPage + relp* mergePagesCount;
+				if((p+mergePagesCount) <= pageCount){
+					var li = document.createElement("li");
+					var link = document.createElement("a");		
+					link.appendChild(document.createTextNode(p +"-"+(p+mergePagesCount-1)));
+					link.href=baseURL+ "hs-"+((p-1)*16)+"/";;
+					li.appendChild(link);
+					navi.insertBefore(li, expandAll);
+					navi.insertBefore(document.createTextNode(" "), expandAll);
+				}else if(p <= pageCount){
+					var li = document.createElement("li");
+					var link = document.createElement("a");		
+					if(p<pageCount){
+						link.appendChild(document.createTextNode(p +"-"+pageCount));
+					}else{
+						link.appendChild(document.createTextNode(pageCount));
+					}
+					link.href=baseURL+ "hs-"+((p-1)*16)+"/";;
+					li.appendChild(link);
+					navi.insertBefore(li, expandAll);
+					navi.insertBefore(document.createTextNode(" "), expandAll);
+				}
+			}
+			
+			//last entry
+			var start = pageCount - (pageCount % mergePagesCount);
+			if(start > (currentPage + 4 * mergePagesCount)){
+				navi.insertBefore(document.createTextNode(" ... "), expandAll);
+			}else{
+				navi.insertBefore(document.createTextNode(" "), expandAll);			
+			}
+						
+			if(start >= (currentPage + 4 * mergePagesCount)){
+				var li = document.createElement("li");
+				var link = document.createElement("a");		
+
+				if(start == pageCount){
+					link.appendChild(document.createTextNode(start));
+				}else if(start +mergePagesCount -1 > pageCount){
+					link.appendChild(document.createTextNode(start+"-"+pageCount));
+				}else{
+					link.appendChild(document.createTextNode(start+"-"+(start+mergePagesCount-1)+" "));
+				}
+				link.href=baseURL+ "hs-"+((start-1)*16)+"/";;
+				li.appendChild(link);
+				navi.insertBefore(li, expandAll);
+				navi.insertBefore(document.createTextNode(" "), expandAll);
+				
+			}
+		}
+		
+		
+	}
+}
+
+function parseBool(b){
+	if(b=="true"){
+		return true;
+	}else if(b=="false"){
+		return false;
+	}
+	GM_log("Error: Cannot parse "+b+" to a boolean");
+}
+
+function readThreadSortModes(){
+	var normal = GM_getValue("TrollExNormalTheadsSorting", "none:false").split(":");
+	normalThreadsSortMode = getThreadsSortModeByName(normal[0]);
+	normalThreadsSortSubThreads = parseBool(normal[1]);
+
+	var badThreads = GM_getValue("TrollExBadTheadsSorting", "none:false").split(":");
+	badThreadsSortMode = getThreadsSortModeByName(badThreads[0]);
+	badThreadsSortSubThreads = parseBool(badThreads[1]);
+	
+	var badUser = GM_getValue("TrollExBadUserTheadsSorting", "none:false").split(":");
+	badUserThreadsSortMode = getThreadsSortModeByName(badUser[0]);
+	badUserThreadsSortSubThreads = parseBool(badUser[1]);
+}
+
+function writeThreadSortModes(){
+	GM_setValue("TrollExNormalTheadsSorting", normalThreadsSortMode.name+":"+normalThreadsSortSubThreads);
+	GM_setValue("TrollExBadTheadsSorting", badThreadsSortMode.name+":"+badThreadsSortSubThreads);
+	GM_setValue("TrollExBadUserTheadsSorting", badUserThreadsSortMode.name+":"+badUserThreadsSortSubThreads);
+}
+
+function readUserRatings(){
+	var allRatings = GM_getValue("TrollExUserRatings", "");
+	userRatings = allRatings.split(",");	
+}
+
+function writeUserRatings(){
+	GM_setValue("TrollExUserRatings", userRatings.join(","));
+}
+
+function getRatingOf(user){
+	for(var i = 0; i < userRatings.length; i++){
+		var ratingItem = userRatings[i].split(":");
+		if(ratingItem[0] == user){
+			return ratingItem[1];
+		}
+	}
+	return 0;
+}
+
+function setRatingOf(user, rating){
+	user = trimName(user);
+	for(var i = 0; i < userRatings.length; i++){
+		var ratingItem = userRatings[i].split(":");
+		if(ratingItem[0] == user){
+			userRatings[i] = user + ":" +rating;
+			return;
+		}
+	}
+	userRatings.push(user + ":" + rating);
+}
+
+
+function deleteRatingOf(user){
+	var goodCount = 0;
+	var tmp = new Array(userRatings.length);
+	
+	for(var i = 0; i < userRatings.length; i++){
+		var ratingItem = userRatings[i].split(":");
+		if(! (ratingItem[0] == user || ratingItem[0] == "")){			
+			tmp[goodCount] = userRatings[i];
+			goodCount++;
+		}
+	}
+	userRatings = new Array(goodCount);
+	for(var i = 0; i < goodCount; i ++){
+		userRatings[i] = tmp[i];
+	}
+}
+
+function trimName(s){
+	var trimmed;
+	
+	var start;
+	for(var i = 0; i < s.length; i++){
+		var c = s.substring(i, i+1);
+		if(c != " " && c != "\n" && c != "\t"){
+			start = i;
+			break;
+		}
+	}
+	var end;
+	for(var i = s.length-1 ; i >=0; i--){
+		var c = s.substring(i, i+1);
+		if(c != " " && c != "\n" && c != "\t"){
+			end = i+1;
+			break;
+		}
+	}
+	var length = end - start;
+	trimmed = s.substring(start, end);
+	return trimmed;
+}
+
+function updateDisplayedRatings(user){
+	var containers = document.evaluate("//span[@TrollExUserRating='"+escape(user)+"']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+	for(var i = 0; i < containers.snapshotLength; i ++){
+		var container = containers.snapshotItem(i);
+		container.removeChild(container.firstChild);
+		container.appendChild(getRatingDisplay(getRatingOf(user)));
+	}
+}
+
+function factoryChangeRating(user, rating){
 	return function(event) {
-		addtoignorelist(v);
+		// reading is necessary because the user coul'd have multiple pages open
+		// and changed the user ratings (in particular adding users) in a other tab/window.
+		readUserRatings(); 
+		setRatingOf(user, rating);
 		event.stopPropagation();
     	event.preventDefault();
+    	writeUserRatings();
+    	updateDisplayedRatings(user);
 	};
 }
 
-function factoryremove(v) {
+function factoryAdjustRating(user, adjust){
 	return function(event) {
-		removefromignorelist(v);
+		user = trimName(user);
+		
+		// remember the oldRating of THIS instance.
+		var oldRating = parseInt(getRatingOf(user)) 
+
+		// reading is necessary because the user coul'd have multiple pages open
+		// and changed the user ratings (in particular adding users) in a other tab/window.
+		readUserRatings(); 
+
+		var rating = oldRating + parseInt(adjust);
+		setRatingOf(user, rating);
 		event.stopPropagation();
     	event.preventDefault();
+    	writeUserRatings();
+    	updateDisplayedRatings(user);
+    	if(oldRating == 0 ){
+			createUserRatingList();    	
+		}
 	};
+}
+
+function factoryDeleteRating(user){
+	return function(event) {
+		// reading is necessary because the user coul'd have multiple pages open
+		// and changed the user ratings in (in particular adding users) a other tab/window.
+		readUserRatings(); 
+		deleteRatingOf(user);
+		event.stopPropagation();
+		event.preventDefault();
+		writeUserRatings();
+		readUserRatings();
+		updateDisplayedRatings(user);
+		createUserRatingList();
+	};
+}
+
+function getRatingDisplay(rating){
+	var ratingDisplay = document.createElement("span");
+	if(rating >=0){
+		var unvisibleMinus = document.createElement("span");
+		unvisibleMinus.style.visibility ="hidden";
+		unvisibleMinus.appendChild(document.createTextNode("-"));
+		ratingDisplay.appendChild(unvisibleMinus);
+	}
+	ratingDisplay.appendChild(document.createTextNode(rating));
+	return ratingDisplay;
+}
+
+function factoryAdjustThreshold(adjust){
+	return function(event){
+		threshold= parseInt(threshold) + parseInt(adjust);
+		GM_setValue("TrollExThreshold", threshold);
+		t = document.getElementById("TrollExThreshold");
+		t.removeChild(t.firstChild);
+		t.appendChild(document.createTextNode(" "+threshold+"% "));
+	}
+}
+
+function factoryAdjustUserThreshold(adjust){
+	return function(event){
+		userRatingThreshold= parseInt(userRatingThreshold) + parseInt(adjust);
+		GM_setValue("TrollExUserThreshold", userRatingThreshold);
+		t = document.getElementById("TrollExUserThreshold");
+		t.removeChild(t.firstChild);
+		t.appendChild(document.createTextNode(" "+userRatingThreshold+" "));
+	}
+}
+
+function factoryAdjustMergePages(adjust){
+	return function(event){
+		var newValue = mergePagesCount + adjust;
+		if(newValue < 1){
+			newValue = 1;
+		}
+		mergePagesCount = newValue;
+		GM_setValue("TrollExMergePagesCount", newValue);
+		var dispElement = document.getElementById("mergePagesDisp");
+		dispElement.firstChild.data = newValue;
+	}
+}
+
+function createButton(displayText, toolTipText, func){
+	button = document.createElement("button");
+	button.appendChild(document.createTextNode(displayText));
+	button.setAttribute("style", buttonStyle);
+	button.setAttribute("title", toolTipText);
+	button.addEventListener('click', func, true);
+	return button;
+}
+
+function createThreadSortGUI(name, func, selectMode, checkSubThreads){
+	var selgui = document.createElement("form");	
+	selgui.setAttribute("name", name);
+	
+	selgui.appendChild(document.createTextNode("Sortieren nach: "));
+	
+	var sel = document.createElement("select");
+	sel.setAttribute("name", "SortDisplayName");
+	sel.setAttribute("size", "1");
+
+	for(var i = 0; i < threadSortModes.length; i ++){
+		var o = document.createElement("option")
+		o.appendChild(document.createTextNode(threadSortModes[i].displayName));
+		if(threadSortModes[i] == selectMode){
+			o.setAttribute("selected", "selected");
+		}
+		sel.appendChild(o);
+	}	
+	sel.addEventListener('change', func, true);
+	selgui.appendChild(sel);
+
+	selgui.appendChild(document.createTextNode(" "));
+	
+	var cb = document.createElement("input");
+	cb.setAttribute("type", "checkbox");
+	cb.setAttribute("name", "SortSubThreads");
+	cb.setAttribute("value", "true");
+	if(checkSubThreads){
+		cb.setAttribute("checked", "checked");
+	}
+	cb.addEventListener('change', func, true);
+	
+	selgui.appendChild(cb);
+	selgui.appendChild(document.createTextNode(" Subthreads auch sortieren"));
+
+	return selgui;
+}
+
+function createSubThreadSortCheckBox(name, func){
+	var cb = document.createElement("input");
+	cb.setAttribute("type", "checkbox");
+	cb.setAttribute("name", name);
+	cb.setAttribute("value", "sortSubthreads");
+	cb.addEventListener('change', func, true);
+	return cb;
 }
 
 function updateVisibility(){
-	totalVisibility = GM_getValue("TrollExTotalVisibility", false);
-	ignoredVisibility = GM_getValue("TrollExIgnoredVisibility", false);
-	document.getElementById('hideableContent').style.visibility = totalVisibility?   'visible':'hidden';
-	document.getElementById('ignoredContent').style.visibility =  (totalVisibility && ignoredVisibility)? 'visible':'hidden';
+
+	badThreadsVisible = GM_getValue("TrollExBadThreadsVisibility", false);
+	badUsersVisible = GM_getValue("TrollExBadUsersVisibility", false);
+	userRatingVisible = GM_getValue("TrollExUserRatingVisibility", false);
 	
-	document.getElementById('totalVisibilityButton').firstChild.data= totalVisibility? "[Ausblenden]" : "[Anzeigen]";
-	document.getElementById('ignoredVisibilityButton').firstChild.data= ignoredVisibility? "[Ausblenden]" : "[Anzeigen]";
+	if(badThreadsVisible) {
+		if(badThreadsCount > 0){
+			badThreadsContainer.appendChild(badThreadsSorting);
+			badThreadsContainer.appendChild(badThreadsList);
+			badThreadsVisibilityButton.firstChild.data= "Ausblenden";
+		}
+	}else{		
+		try {
+			badThreadsContainer.removeChild(badThreadsSorting);
+			badThreadsContainer.removeChild(badThreadsList);
+		} catch(e) {
+			// ignore this
+		}
+		badThreadsVisibilityButton.firstChild.data= "Anzeigen";
+	}
+	if(badUsersVisible) {
+		if(badUserThreadsCount > 0){
+			badUsersContainer.appendChild(badUserThreadsSorting);
+			badUsersContainer.appendChild(badUsersThreads);
+			badUsersVisibilityButton.firstChild.data= "Ausblenden";
+		}
+	} else {
+		try {
+			badUsersContainer.removeChild(badUserThreadsSorting);
+			badUsersContainer.removeChild(badUsersThreads);
+		} catch (e) {
+			// ignore this
+		}
+		badUsersVisibilityButton.firstChild.data= "Anzeigen";
+	}
+	
+	if(userRatingVisible) {
+		userRatingListContainer.appendChild(userRatingList);
+		userRatingVisibilityButton.firstChild.data= "Ausblenden";
+		userRatingListTitle.appendChild(userRatingSortButtonsContainer);
+	} else {
+		try {
+			userRatingListContainer.removeChild(userRatingList);
+			userRatingListTitle.removeChild(userRatingSortButtonsContainer);
+		} catch (e) {
+			// ignore this
+		}
+		userRatingVisibilityButton.firstChild.data= "Anzeigen";
+	}
+	
 }
 
-function switchTotalVisibilty() {
-	visible = GM_getValue("TrollExTotalVisibility", false);
+function switchBadThreadsVisibilty() {
+	visible = GM_getValue("TrollExBadThreadsVisibility", false);
 	visible = !visible;
-	GM_setValue("TrollExTotalVisibility", visible);
+	GM_setValue("TrollExBadThreadsVisibility", visible);
+	updateVisibility();	
+}
+
+function switchBadUsersVisibilty() {
+	visible = GM_getValue("TrollExBadUsersVisibility", false);
+	visible = !visible;
+	GM_setValue("TrollExBadUsersVisibility", visible);
 	updateVisibility();
 }
 
-function switchIgnoredVisibilty() {
-	visible = GM_getValue("TrollExIgnoredVisibility", false);
+function switchUserRatingVisibilty() {
+	visible = GM_getValue("TrollExUserRatingVisibility", false);
 	visible = !visible;
-	GM_setValue("TrollExIgnoredVisibility", visible);
+	GM_setValue("TrollExUserRatingVisibility", visible);
 	updateVisibility();
 }
 
+function createUserRatingList(){
+	try {
+		userRatingListContainer.removeChild(userRatingList);
+		userRatingListTitle.removeChild(userRatingListTitle.firstChild);
+	} catch (e) {
+		// ignore this
+	}
 
-var allImages, thisImage;
-var threshold = GM_getValue("threshold", -50);
-var ignoreliststr = GM_getValue("ignorelist", "");
-var ignorelist = ignoreliststr.split(",");
+	userRatingList = document.createElement('ul');
+	userRatingList.appendChild(document.createTextNode(""));
+	
+	var userRatingText;
+	if(userRatings.length == 0){
+		userRatingText = "Keine Forenteilnehmer bewertet.";
+	}else if(userRatings.length == 1){
+		userRatingText = "Einen Forenteilnehmer bewertet:";
+	}else {
+		userRatingText = (userRatings.length) + " Forenteilnehmer bewertet:";
+	}
+	userRatingListTitle.insertBefore(document.createTextNode(userRatingText), userRatingListTitle.firstChild);
 
-var blocked = 0;
-var ignored = 0;
+	
+	for (i = 0; i < userRatings.length; i++) {
+		if (userRatings[i] != "") {
+			r = userRatings[i].split(":");
+			
+			var user = r[0];
+			var rating = r[1];
+			
+			line = document.createElement('li');
 
-ignoreList = document.createElement('ol');
-ignoreList.setAttribute('id','ignoreList');
+			line.appendChild(createButton("X", "Bewertung von "+ user + " löschen", factoryDeleteRating(user)));
+			line.appendChild(createButton("0", "Bewertung von "+ user + " löschen", factoryChangeRating(user, 0)));	
+			
+			line.appendChild(document.createTextNode(" "));			
+	
+			line.appendChild(createButton("- -", "Bewertung von "+ user + " um zwei Punkte verschlechtern", factoryAdjustRating(user, -2)));
+			line.appendChild(createButton("-", "Bewertung von "+ user + " um einen Punkt verschlechtern", factoryAdjustRating(user, -1)));
 
-ignoreList.appendChild(document.createTextNode(""));
-
-for (i = 0; i < ignorelist.length; i++) {
-	if (ignorelist[i] != "") {
+			line.appendChild(document.createTextNode(" "));			
 		
-		line = document.createElement('li');
-		line.innerHTML = ignorelist[i];
-		button1 = document.createElement('span');		
-		button1.addEventListener('click', factoryremove(ignorelist[i]), true);
-		button1.innerHTML = "[entfernen]";
-		button1.setAttribute("style", "text-decoration:none; font-weight:normal; color: blue; cursor: hand; cursor: pointer;");
-		button1.setAttribute("title",ignorelist[i] +" von der Ignoreliste entfernen");
-		line.appendChild(button1);
-		ignoreList.appendChild(line);
+			var ratingContainer = document.createElement("span");
+			ratingContainer.setAttribute("TrollExUserRating", escape(user));			
+			ratingContainer.appendChild(getRatingDisplay(rating));			
+			line.appendChild(ratingContainer);
+
+			line.appendChild(document.createTextNode(" "));			
+
+			line.appendChild(createButton("+", "Bewertung von "+ user + " um einen Punkt verbessern", factoryAdjustRating(user, 1)));
+			line.appendChild(createButton("++", "Bewertung von "+ user + " um zwei Punkte verbessern", factoryAdjustRating(user, 2)));
+
+			line.appendChild(document.createTextNode("  " +user+ "  "));
+			
+			userRatingList.appendChild(line);
+		}
+	}
+	userRatingVisible = GM_getValue("TrollExUserRatingVisibility", false);
+	if(userRatingVisible) {
+		userRatingListContainer.appendChild(userRatingList);
+		userRatingVisibilityButton.firstChild.data= "Ausblenden";
+	} else {
+		userRatingVisibilityButton.firstChild.data= "Anzeigen";
+	}
+}
+
+function getUserNameOfRow(row){
+	var activeNameRes = document.evaluate("./div/div[@class='thread_user']/span" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+	var nameNode;
+	if(activeNameRes.snapshotLength > 0){
+		nameNode = activeNameRes.snapshotItem(0);
+		activeThread = true;
+	}else{
+		var nameRes = document.evaluate("./div/div[@class='thread_user']" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		nameNode = nameRes.snapshotItem(0);
+		activeThread = false;
+	}
+	return trimName(nameNode.innerHTML);
+}
+
+function moveThreads(listOfThreads){
+	var allArticles = document.evaluate(".//li[div/@class='hover' or div/@class='hover_line']", listOfThreads, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+	for (var i = 0; i < allArticles.snapshotLength; i++) {
+		var row = allArticles.snapshotItem(i);
+		
+		var username;
+		var nameNode;
+		var activeThread;
+		
+		var activeNameRes = document.evaluate("./div/div[@class='thread_user']/span" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		if(activeNameRes.snapshotLength > 0){
+			nameNode = activeNameRes.snapshotItem(0);
+			activeThread = true;
+		}else{
+			var nameRes = document.evaluate("./div/div[@class='thread_user']" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+			nameNode = nameRes.snapshotItem(0);
+			activeThread = false;
+		}
+		username = trimName(nameNode.innerHTML);
+		
+		
+		var threadRatingRes = document.evaluate("./div/div[@class='thread_votechart']/a/img", row, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		var threadRating = 0;
+		
+		if(threadRatingRes.snapshotLength > 0){
+			var rateElem = threadRatingRes.snapshotItem(0);
+			threadRating = parseInt(rateElem.alt);
+		}
+		
+		parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread]" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		parentMoved = (parentMovedSearch.snapshotLength > 0);
+		
+		var userRating = getRatingOf(username);
+		
+		var config, button;
+		
+		config = document.createElement("span");
+		
+		config.appendChild(createButton("-", "Bewertung von "+ username + " um einen Punkt verschlechtern", factoryAdjustRating(username, -1)));
+		
+		var ratingContainer = document.createElement("span");
+		ratingContainer.setAttribute("TrollExUserRating", escape(username));
+		ratingContainer.appendChild(getRatingDisplay(userRating));			
+		config.appendChild(ratingContainer);
+
+		config.appendChild(createButton("+", "Bewertung von "+ username + " um einen Punkt verbessern", factoryAdjustRating(username, 1)));
+		
+		nameNode.firstChild.data = " "+username;
+		nameNode.insertBefore(config, nameNode.firstChild);
+		
+		// set some attributes for the later use
+		row.setAttribute("TrollExUserName", username);
+		row.setAttribute("TrollExThreadRating", threadRating);
+		
+		if(!parentMoved){
+			if (userRating <= userRatingThreshold) {		
+				// remove this subthread
+				row.setAttribute("trollex_moved_thread", "true");
+				badUsersThreads.appendChild(row);
+				badUserThreadsCount++;
+			}else if(threadRating <= threshold) {
+				row.setAttribute("trollex_moved_thread", "true");
+		    	badThreadsList.appendChild(row);
+		    	badThreadsCount++;
+			}else {
+				if(row.parentNode.getAttribute("class") == "thread_tree"){
+					normalThreadsList.appendChild(row);
+					normalThreadsCount++;
+				}
+			}
+		}
+	}
+	updateCountTitles();
+	sortAllThreads();
+	updateVisibility();
+}
+
+function sortThreads(list, sortFunction, sortSubThreads){
+	var rows = document.evaluate("./li[div/@class='hover' or div/@class='hover_line']", list, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+	if(rows.snapshotLength > 0 ){
+		var l = new Array(rows.snapshotLength);
+		for(var i = 0; i < rows.snapshotLength; i++){
+			l[i] = rows.snapshotItem(i);
+		}
+		l.sort(sortFunction);
+		for(var i = 0; i < l.length; i++){
+			list.appendChild(l[i]);
+			if(sortSubThreads){
+				// sort all sub lists
+				var nextLevelRes = document.evaluate("./ul", l[i], null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+				for(var nl = 0; nl < nextLevelRes.snapshotLength; nl++){
+					sortThreads(nextLevelRes.snapshotItem(nl), sortFunction, sortSubThreads);
+				}
+				
+				// correct the class attributes
+				var hoverRes = document.evaluate("./div[div[@class='thread_date']]", l[i], null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+				if(i < l.length -1 && list.getAttribute("class") != "thread_tree"){
+					hoverRes.snapshotItem(0).setAttribute("class", "hover_line");
+					l[i].setAttribute("class", "");
+				}else{
+					hoverRes.snapshotItem(0).setAttribute("class", "hover");
+					l[i].setAttribute("class", "last");
+				}
+				if(list.getAttribute("class") != "thread_tree"){
+					if(l.length > 1){
+						list.setAttribute("class", "nextlevel_line");
+					}else{
+						list.setAttribute("class", "nextlevel");
+					}
+				}
+			}			
+		}
+	}
+}
+
+function sortUserRating(a, b){
+	var vala = getRatingOf(a.getAttribute("TrollExUserName"));
+	var valb = getRatingOf(b.getAttribute("TrollExUserName"));
+	return valb-vala;
+}
+
+function sortThreadRating(a, b){
+	var vala = parseInt(a.getAttribute("TrollExThreadRating"));
+	var valb = parseInt(b.getAttribute("TrollExThreadRating"));
+	return valb-vala;
+}
+
+function sortUserThreadRating(a, b){
+	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 1000 + parseInt(a.getAttribute("TrollExThreadRating"));
+	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 1000 + parseInt(b.getAttribute("TrollExThreadRating"));
+	return valb-vala;
+}
+
+function sortThreadUserRating(a, b){
+	var vala = getRatingOf(a.getAttribute("TrollExUserName")) + parseInt(a.getAttribute("TrollExThreadRating")) * 1000;
+	var valb = getRatingOf(b.getAttribute("TrollExUserName")) + parseInt(b.getAttribute("TrollExThreadRating")) * 1000;
+	return valb-vala;
+}
+
+
+function getThreadsSortModeByDisplayName(dispName){
+	for(var i = 0; i < threadSortModes.length; i++){
+		if(threadSortModes[i].displayName == dispName){
+			return threadSortModes[i];
+		}
+	}
+}
+
+function getThreadsSortModeByName(name){
+	for(var i = 0; i < threadSortModes.length; i++){
+		if(threadSortModes[i].name == name){
+			return threadSortModes[i];
+		}
 	}
 }
 
 
-allImages = document.evaluate("//div[@class='thread_votechart']//img[contains(@title,'Beitragsbewertung: ')]", document, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+function sortNormalThreads(){
+	if(normalThreadsCount > 0 && normalThreadsSortMode.func != null){		
+		sortThreads(normalThreadsList, normalThreadsSortMode.func, normalThreadsSortSubThreads);
+	}
+}
+
+function sortBadThreads(){
+	if(badThreadsCount > 0 && badThreadsSortMode.func != null){
+		sortThreads(badThreadsList, badThreadsSortMode.func, badThreadsSortSubThreads);
+	}
+}
+
+function sortBadUserThreads(){
+	if(badUserThreadsCount > 0 && badUserThreadsSortMode.func != null){
+		sortThreads(badUsersThreads, badUserThreadsSortMode.func, badUserThreadsSortSubThreads);
+	}
+}
+
+function sortAllThreads(){
+	sortNormalThreads();
+	sortBadThreads();
+	sortBadUserThreads();
+}
+
+function sortUserRatings(sortFunction){
+	userRatings.sort(sortFunction);
+	writeUserRatings();
+	createUserRatingList();
+}
+
+function sortRatingsByRating(a, b){
+	var vala = parseInt(a.split(":")[1]);
+	var valb = parseInt(b.split(":")[1]);
+	return valb-vala;
+}
+
+function sortRatingsByName(a, b){
+	var vala = a.split(":")[0].toLowerCase();
+	var valb = b.split(":")[0].toLowerCase();
+	var ret;
+	if(valb == vala){
+		ret = 0;
+	}else if(valb < vala){
+		ret = 1;
+	}else {
+		ret = -1;
+	}
+	return ret;
+}
 
 
-var badThreads = document.createElement('div');
+function updateCountTitles(){
+	while(badThreadsTitle.firstChild){
+		badThreadsTitle.removeChild(badThreadsTitle.firstChild);
+	}
+
+	var badThreadsText;
+	if(badThreadsCount==0){
+	  badThreadsText = "Heise TrollEx hat keine schlecht bewertete Threads ausgefiltert.";
+	}else if(badThreadsCount==1){
+	  badThreadsText = "Heise TrollEx hat einen schlecht bewerteten Thread ausgefiltert:";
+	}else{
+	  badThreadsText = "Heise TrollEx hat " +badThreadsCount + " schlecht bewertete Threads ausgefiltert:";
+	}
+	
+	badThreadsTitle.appendChild(document.createTextNode(badThreadsText));
+	
+	if(badThreadsCount > 0){	
+		var tmp=document.createElement("span");
+		tmp.appendChild(document.createTextNode("----"));
+		tmp.style.visibility ="hidden";		
+		badThreadsTitle.appendChild(tmp);
+		badThreadsTitle.appendChild(badThreadsVisibilityButton);
+	}
+	
+	while(badUsersTitle.firstChild){
+		badUsersTitle.removeChild(badUsersTitle.firstChild);
+	}
+	var badUserThreadsText;
+	if(badUserThreadsCount==0){
+	  badUserThreadsText = "Heise TrollEx hat keine Threads von schlecht bewerteten Forenteilnehmern ausgefiltert.";
+	}else if(badUserThreadsCount==1){
+	  badUserThreadsText = "Heise TrollEx hat einen Thread von einem schlecht bewerteten Forenteilnehmer ausgefiltert:";
+	}else{
+	  badUserThreadsText = "Heise TrollEx hat " +badUserThreadsCount + " Threads von schlecht bewerteten Forenteilnehmern ausgefiltert:";
+	}
+	badUsersTitle.appendChild(document.createTextNode(badUserThreadsText));
+
+	if(badUserThreadsCount > 0){
+		tmp=document.createElement("span");
+		tmp.appendChild(document.createTextNode("----"));
+		tmp.style.visibility ="hidden";
+		
+		badUsersTitle.appendChild(tmp);
+		badUsersTitle.appendChild(badUsersVisibilityButton);
+	}
+	
+}
+
+
+readUserRatings();
+readThreadSortModes();
+
+var threadListRes = document.evaluate("//ul[@class='thread_tree']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+var threadList = threadListRes.snapshotItem(0);
+
+var normalThreadsList = document.createElement('ul');
+normalThreadsList.setAttribute('class', 'thread_tree');
+
 var badThreadsList = document.createElement('ul');
 badThreadsList.setAttribute('class', 'thread_tree');
 
-var ignoredUsersThreads = document.createElement('div');
-var ignoredUsersThreadsList = document.createElement('ul');
-ignoredUsersThreadsList.setAttribute('class', 'thread_tree');
+var badUsersThreads = document.createElement('ul');
+badUsersThreads.setAttribute('class', 'thread_tree');
 
+// create bad threads title
+var badThreadsTitle = document.createElement('span');
+badThreadsTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
+var badThreadsVisibilityButton = createButton("Ein-/Ausblenden", "", switchBadThreadsVisibilty);
 
-var allArticles = document.evaluate(
-    "//li[div/@class='hover' or div/@class='hover_line']",
-    document,
-    null,
-    XPathResult.ORDERED_NODE_SNAPSHOT_TYPE,
-    null);
+// create the "threads of bad users" title element
 
-for (var i = 0; i < allArticles.snapshotLength; i++) {
-  var row = allArticles.snapshotItem(i);
+var badUsersTitle = document.createElement('span');
+badUsersTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
+var badUsersVisibilityButton = createButton("Ein-/Ausblenden", "", switchBadUsersVisibilty);
+
+// create normel Threads sorting element.
+
+var normalSorting = createThreadSortGUI("NormalSortingForm", 
+  function(){ 
+  	dispName = document.forms.namedItem("NormalSortingForm").elements.namedItem("SortDisplayName").value;
+  	normalThreadsSortMode = getThreadsSortModeByDisplayName(dispName);
+  	normalThreadsSortSubThreads = document.forms.namedItem("NormalSortingForm").elements.namedItem("SortSubThreads").checked;
+  	writeThreadSortModes();
+  	sortNormalThreads();
+  }, normalThreadsSortMode, normalThreadsSortSubThreads);
+normalSorting.setAttribute("style", "font-weight:bold");
+
+var badThreadsSorting = createThreadSortGUI("BadThreadsSortingForm", 
+  function(){ 
+  	dispName = document.forms.namedItem("BadThreadsSortingForm").elements.namedItem("SortDisplayName").value;
+  	badThreadsSortMode = getThreadsSortModeByDisplayName(dispName);
+  	badThreadsSortSubThreads = document.forms.namedItem("BadThreadsSortingForm").elements.namedItem("SortSubThreads").checked;
+  	writeThreadSortModes();
+  	sortBadThreads();
+  }, badThreadsSortMode, badThreadsSortSubThreads);
   
-  var nameRes = document.evaluate( "./div/div[@class='thread_user']" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-  var nameNode = nameRes.snapshotItem(0);
-  var username = nameNode.innerHTML;
-  
-  parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread]" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-  parentMoved = (parentMovedSearch.snapshotLength > 0);
+var badUserThreadsSorting = createThreadSortGUI("BadUserThreadsSortingForm",
+  function(){ 
+  	dispName = document.forms.namedItem("BadUserThreadsSortingForm").elements.namedItem("SortDisplayName").value;
+  	badUserThreadsSortMode = getThreadsSortModeByDisplayName(dispName);
+  	badUserThreadsSortSubThreads = document.forms.namedItem("BadUserThreadsSortingForm").elements.namedItem("SortSubThreads").checked;
+  	writeThreadSortModes();
+  	sortBadUserThreads();
+  }, badUserThreadsSortMode, badUserThreadsSortSubThreads);
 
-  if (inarray(ignorelist,  username)) { 
-    if(!parentMoved){
-      // remove this subthread
-      row.setAttribute("trollex_moved_thread", "true");
-      ignoredUsersThreadsList.appendChild(row);
-      blocked++;
-      ignored++;
-    }
-	// add an "don't ignore" Button	
-    button = document.createElement('span');
-    button.href = null;
-    button.addEventListener('click', factoryremove(username), true);
-    button.innerHTML = " [n]";
-    button.setAttribute("style", "text-decoration:none;  font-weight:normal; color: blue; cursor: hand; cursor: pointer; ");
-    button.setAttribute("title", username+ " nicht mehr ignorieren");
-    nameNode.insertBefore(button, nameNode.firstChild);
-  }else{
-  	// do not remove the subthread but add a ignore button
-    button = document.createElement('span');
-    button.href = null;
-    button.addEventListener('click', factoryadd(username), true);
-    button.innerHTML = " [i]";
-    button.setAttribute("style", "text-decoration:none;  font-weight:normal; color: blue; cursor: hand; cursor: pointer; ");
-    button.setAttribute("title", username+ " auf die Ignoreliste setzen");
-    nameNode.insertBefore(button, nameNode.firstChild);
-  }
-}
-
-ignoredUsersThreads.appendChild(ignoredUsersThreadsList);
-ignoredUsersThreads.setAttribute('id','ignoredUsersThreads');
-
-
-for (var i = 0; i < allImages.snapshotLength; i++) {
-    var tablerow, bewvalue;
-    thisImage = allImages.snapshotItem(i);
-    bewvalue = parseInt(thisImage.title.substr(19,4));
-    
-    parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread]" ,thisImage , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-    parentMoved = (parentMovedSearch.snapshotLength > 0);
-    
-    if (!parentMoved && bewvalue <= threshold) {
-    	tablerow = thisImage.parentNode.parentNode.parentNode.parentNode;
-    	tablerow.setAttribute("trollex_moved_thread", "true");
-    	badThreadsList.appendChild(tablerow);
-    	blocked++;
-    }
-}
-
-
-badThreads.appendChild(badThreadsList);
-badThreads.setAttribute('id','badThreads');
-
-// create the "xy threads blocked" title element
-
-var blockedTitle = document.createElement('span');
-blockedTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
-
-var blockedThreads;
-if(blocked==0){
-  blockedThreads = "Heise TrollEx hat keine Threads ausgefiltert.";
-}else if(blocked==1){
-  blockedThreads = "Heise TrollEx hat insgesamt einen Thread ausgefiltert:";
-}else{
-  blockedThreads = "Heise TrollEx hat insgesamt " +blocked + " Threads ausgefiltert:";
-}
-blockedTitle.appendChild(document.createTextNode(blockedThreads));
-tmp=document.createElement("span");
-tmp.appendChild(document.createTextNode("----"));
-tmp.style.visibility ="hidden";
-blockedTitle.appendChild(tmp);
-
-totalVisibilityButton = document.createElement("span");
-totalVisibilityButton.setAttribute("id", "totalVisibilityButton")
-totalVisibilityButton.setAttribute("style", "text-decoration:none; font-weight:normal; color: blue; cursor: hand; cursor: pointer;");
-totalVisibilityButton.addEventListener('click', switchTotalVisibilty, true);
-totalVisibilityButton.appendChild(document.createTextNode("[Ein-/Ausblenden]"));
-
-blockedTitle.appendChild(totalVisibilityButton);
-blockedTitle.appendChild(document.createElement('br'));
-
-// create the "xy threads blocked" title element
-
-var ignoredTitle = document.createElement('span');
-ignoredTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
-
-var ignoredThreads;
-if(ignored==0){
-  ignoredThreads = "Heise TrollEx hat keine Threads von ignorierten Trollen ausgefiltert.";
-}else if(blocked==1){
-  ignoredThreads = "Heise TrollEx hat einen Thread von ignorierten Trollen ausgefiltert:";
-}else{
-  ignoredThreads = "Heise TrollEx hat " +ignored + " Threads von ignorierten Trollen ausgefiltert:";
-}
-ignoredTitle.appendChild(document.createTextNode(ignoredThreads));
-tmp=document.createElement("span");
-tmp.appendChild(document.createTextNode("----"));
-tmp.style.visibility ="hidden";
-ignoredTitle.appendChild(tmp);
-
-ignoredVisibilityButton = document.createElement("span");
-ignoredVisibilityButton.setAttribute("id", "ignoredVisibilityButton")
-ignoredVisibilityButton.setAttribute("style", "text-decoration:none; font-weight:normal; color: blue; cursor: hand; cursor: pointer;");
-ignoredVisibilityButton.addEventListener('click', switchIgnoredVisibilty, true);
-ignoredVisibilityButton.appendChild(document.createTextNode("[Ein-/Ausblenden]"));
-
-ignoredTitle.appendChild(ignoredVisibilityButton);
-ignoredTitle.appendChild(document.createElement('br'));
-
-
-// create the threshold GUI elements
+// create the threshold GUI 
 thresholdGUI = document.createElement('div');
 
-button1 = document.createElement('span');
-button1.addEventListener('click', increasethreshold, true);
-button1.innerHTML = "[+]";
-button1.setAttribute("style", "font-family: courier;font-size: 16px;text-decoration:none; font-weight:bolder; color: blue; cursor: hand; cursor: pointer; ");
+thresholdGUI.appendChild(document.createTextNode("Schwellwert ab dem schlecht bewertete Threads ausgefiltert werden sollen: "));
 
-thresholdview = document.createTextNode(" " + threshold + " % ");
-
-button2 = document.createElement('span');
-button2.addEventListener('click', decreasethreshold, true);
-button2.innerHTML = "[-]";
-
-button2.setAttribute("style", "font-family: courier; font-size: 16px;text-decoration:none; font-weight:bolder; color: blue; cursor: hand; cursor: pointer; ");
-
-thresholdGUI.appendChild(document.createTextNode(" Schwellwert: "));
 tmp=document.createElement("span");
 tmp.appendChild(document.createTextNode("----"));
 tmp.style.visibility ="hidden";
 thresholdGUI.appendChild(tmp);
-thresholdGUI.appendChild(button2);
-thresholdGUI.appendChild(thresholdview);
-thresholdGUI.appendChild(button1);
 
-// create the ignore list title
+thresholdGUI.appendChild(createButton("- -", "Threashold um 10 erniedrigen", factoryAdjustThreshold(-10)));
+thresholdGUI.appendChild(createButton("-", "Threashold um 5 erniedrigen", factoryAdjustThreshold(-5)));
 
-ignoreListTitle =  document.createElement('span');
+thresholdContainer = document.createElement("span");
+thresholdContainer.setAttribute("id", "TrollExThreshold");
+thresholdContainer.appendChild(document.createTextNode(" " + threshold + "% "));
+thresholdGUI.appendChild(thresholdContainer);
 
-var trollText;
-if(ignorelist.length == 1){
-  trollText = "Keine Trolle in der Ignorelist.";
-}else if(ignorelist.length == 2){
-  trollText = "Ein Troll in der Ignorelist:";
-}else {
-  trollText = (ignorelist.length-1) + " Trolle in der Ignorelist:";
+thresholdGUI.appendChild(createButton("+", "Threashold um 5 erhöhen", factoryAdjustThreshold(5)));
+thresholdGUI.appendChild(createButton("++", "Threashold um 10 erhöhen", factoryAdjustThreshold(10)));
+
+
+// create the user threshold gui
+userThresholdGUI = document.createElement('div');
+
+userThresholdGUI.appendChild(document.createTextNode("Schwellwert ab dem Threads von schlechten Forenteilnehmern ausgefiltert werden sollen: "));
+
+tmp=document.createElement("span");
+tmp.appendChild(document.createTextNode("----"));
+tmp.style.visibility ="hidden";
+userThresholdGUI.appendChild(tmp);
+
+userThresholdGUI.appendChild(createButton("- -", "Threashold um 2 erniedrigen", factoryAdjustUserThreshold(-2)));
+userThresholdGUI.appendChild(createButton("-", "Threashold um 1 erniedrigen", factoryAdjustUserThreshold(-1)));
+
+userThresholdContainer = document.createElement("span");
+userThresholdContainer.setAttribute("id", "TrollExUserThreshold");
+userThresholdContainer.appendChild(document.createTextNode(" " + userRatingThreshold + " "));
+userThresholdGUI.appendChild(userThresholdContainer);
+
+userThresholdGUI.appendChild(createButton("+", "Threashold um 1 erhöhen", factoryAdjustUserThreshold(1)));
+userThresholdGUI.appendChild(createButton("++", "Threashold um 2 erhöhen", factoryAdjustUserThreshold(2)));
+
+// create the "merge pages" GUI
+
+var mergePagesGUI = document.createElement("div");
+var mergePagesDisp = document.createElement("span");
+mergePagesDisp.appendChild(document.createTextNode(mergePagesCount));
+mergePagesDisp.setAttribute("id", "mergePagesDisp");
+mergePagesGUI.appendChild(createButton("-", "Eine Seite weniger", factoryAdjustMergePages(-1)));
+mergePagesGUI.appendChild(document.createTextNode(" "));
+mergePagesGUI.appendChild(mergePagesDisp)
+mergePagesGUI.appendChild(document.createTextNode(" "));
+mergePagesGUI.appendChild(createButton("+", "Eine Seite mehr", factoryAdjustMergePages(1)));
+mergePagesGUI.appendChild(document.createTextNode(" Seiten zu einer zusammenfügen"));
+
+
+// create the user rating list title
+
+userRatingListTitle =  document.createElement('span');
+
+userRatingVisibilityButton = createButton("Ein-/Ausblenden", "" , switchUserRatingVisibilty);
+
+var userRatingSortButtonsContainer = document.createElement("span");
+tmp=document.createElement("span");
+tmp.appendChild(document.createTextNode("----"));
+tmp.style.visibility ="hidden";
+userRatingSortButtonsContainer.appendChild(tmp);
+tmp = null;
+userRatingSortButtonsContainer.appendChild(document.createTextNode("Sortieren nach: "));
+
+var sortUserRatingsNameButton = createButton("Nach Namen", "Sortiert die Liste nach Namen", function(){sortUserRatings(sortRatingsByName);} );
+var sortUserRatingsRatingButton = createButton("Nach Bewertung", "Sortiert die Liste nach Bewertung", function(){sortUserRatings(sortRatingsByRating);} );
+userRatingSortButtonsContainer.appendChild(sortUserRatingsNameButton);
+userRatingSortButtonsContainer.appendChild(sortUserRatingsRatingButton);
+
+if(userRatings.length > 0){
+	tmp=document.createElement("span");
+	tmp.appendChild(document.createTextNode("----"));
+	tmp.style.visibility ="hidden";
+	userRatingListTitle.appendChild(tmp);
+	userRatingListTitle.appendChild(userRatingVisibilityButton);
+	if(GM_getValue("TrollExUserRatingVisibility", false)){
+		userRatingListTitle.appendChild(userRatingSortButtonsContainer);
+	}
 }
-ignoreListTitle.innerHTML = trollText;
+
+
+// create the config elements.
+
+trollExConfigTitle = document.createElement("span");
+trollExConfigTitle.setAttribute("style", "text-decoration:underline; font-weight:bold;");
+trollExConfigTitle.appendChild(document.createTextNode("TrollEx Konfiguration"));
+
+var trollExUpdateContainer = document.createElement("span");
 
 trollExContainer = document.createElement("div");
-trollExContainer.appendChild(blockedTitle);
+trollExContainer.appendChild(trollExConfigTitle);
+trollExContainer.appendChild(document.createElement("br"));
+var hp = document.createElement("div");
+hp.setAttribute("style", "text-align:right");
+hp.appendChild(trollExHP);
+trollExContainer.appendChild(hp);
+trollExContainer.appendChild(document.createElement("br"));
 
-hideableContent = document.createElement("div");
-hideableContent.setAttribute("id", "hideableContent");
-hideableContent.appendChild(badThreads);
-hideableContent.appendChild(document.createElement("br"));
-hideableContent.appendChild(thresholdGUI);
-hideableContent.appendChild(document.createElement("br"));
-hideableContent.appendChild(ignoredTitle);
+trollExContainer.appendChild(trollExUpdateContainer);
 
-ignoredContent = document.createElement("div");
-ignoredContent.setAttribute("id", "ignoredContent");
-ignoredContent.appendChild(ignoredUsersThreads);
-ignoredContent.appendChild(document.createElement("br"));
-ignoredContent.appendChild(ignoreListTitle);
-ignoredContent.appendChild(ignoreList);
+trollExContainer.appendChild(document.createElement("br"));
+trollExContainer.appendChild(document.createElement("br"));
+trollExContainer.appendChild(thresholdGUI);
+trollExContainer.appendChild(document.createElement("br"));
+trollExContainer.appendChild(userThresholdGUI);
+trollExContainer.appendChild(document.createElement("br"));
+trollExContainer.appendChild(mergePagesGUI);
+trollExContainer.appendChild(document.createElement("br"));
+trollExContainer.appendChild(userRatingListTitle);
 
-hideableContent.appendChild(ignoredContent);
-trollExContainer.appendChild(hideableContent);
 
-var untereZeil  = document.evaluate( "//ul[@class='forum_aktion']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
-var untereZeile = untereZeil.snapshotItem(0);
+
+userRatingListContainer = document.createElement("div");
+trollExContainer.appendChild(userRatingListContainer);
+
+badThreadsContainer = document.createElement("div");
+badThreadsContainer.appendChild(badThreadsTitle);
+
+badUsersContainer = document.createElement("div");
+badUsersContainer.appendChild(badUsersTitle);
+
+threadList.parentNode.insertBefore(normalSorting, threadList.nextSibling);
+threadList.parentNode.insertBefore(normalThreadsList, normalSorting.nextSibling);
+threadList.parentNode.insertBefore(badThreadsContainer, normalThreadsList.nextSibling);
+threadList.parentNode.insertBefore(badUsersContainer, badThreadsContainer.nextSibling);
+
+var untereZeileRes  = document.evaluate( "//ul[@class='forum_aktion']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+var untereZeile = untereZeileRes.snapshotItem(0);
 untereZeile.parentNode.insertBefore(trollExContainer, untereZeile.nextSilbing);
 
-updateVisibility();
+createUserRatingList();
+moveThreads(threadList);
 
+pageCount = getPageCount();
+
+if(mergePagesCount > 1){
+	var cp = getCurrentPage();
+	
+	var i = 1;
+	while(cp + i <= pageCount && i < mergePagesCount){
+		getPage(cp+i);	
+		i++;
+	}
+	updateForumNavis();
+}
+checkForUpdates();
