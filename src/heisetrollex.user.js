@@ -1256,6 +1256,8 @@ if(mergePagesCount > 1){
 		getPage(cp+i);	
 		i++;
 	}
-	updateForumNavis();
+	if(window.location.href.search(/\/read/) < 0){
+		updateForumNavis();
+	}
 }
 checkForUpdates();
