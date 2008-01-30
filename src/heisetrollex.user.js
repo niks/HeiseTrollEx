@@ -140,7 +140,9 @@ function updateVersionLoaded(responseDetails){
 				GM_setValue("TrollExLastSucessfulUpdate", lastSucessfulUpdateTest.toGMTString()); 
 			}
 		} else {
-		    alert("Problem retrieving XML data");
+			trollExUpdateContainer.appendChild(document.createTextNode("TrollEx kann den Server nicht erreichen."));
+			trollExUpdateContainer.appendChild(document.createTextNode(" Zuletzt erfolgreich überprüft am "+ lastSucessfulUpdateTest.toLocaleString()+" "));
+			trollExUpdateContainer.appendChild(checkNow);
 		}
 	}
 }
