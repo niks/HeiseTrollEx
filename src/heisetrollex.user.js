@@ -16,7 +16,7 @@
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersion = 20080130;
+var trollExVersionDate = "30.01.2008 15:09:00";
 var trollExDisplayVersion = "0.80"
 var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
 var updateXML;
@@ -117,10 +117,10 @@ function updateVersionLoaded(responseDetails){
 	if (responseDetails.readyState==4) { 
 		if (responseDetails.status==200) {
 			var versionText = responseDetails.responseText.split(" ");
-			latestVersion = versionText[0];
-			latestDisplayVersion = versionText[1];
-			
-			if(parseInt(latestVersion) > parseInt(trollExVersion)){
+			var latestVersionDate = versionText[0];
+			var latestDisplayVersion = versionText[1];
+						
+			if( (parseDate(latestVersionDate)).getTime() > (parseDate(trollExVersionDate)).getTime() ){
 				// Update available!
 				var updates = document.createElement("span");
 				updates.appendChild(document.createTextNode("Es gibt Updates!"));
@@ -368,6 +368,14 @@ function parseBool(b){
 		return false;
 	}
 	GM_log("Error: Cannot parse "+b+" to a boolean");
+}
+
+function parseDate(dateString){
+	var tmp = dateString.split(" ");
+	var tmpDate = tmp[0].split(".");
+	var tmpTime = tmp[1].split(":");
+	var date = new Date(parseInt(tmpDate[2]), parseInt(tmpDate[1])-1, parseInt(tmpDate[0]), parseInt(tmpTime[0]), parseInt(tmpTime[1]), parseInt(tmpTime[2]));
+	return date;
 }
 
 function readThreadSortModes(){
