@@ -371,15 +371,15 @@ function parseBool(b){
 }
 
 function readThreadSortModes(){
-	var normal = GM_getValue("TrollExNormalTheadsSorting", "none:false").split(":");
+	var normal = GM_getValue("TrollExNormalTheadsSorting", "userThreadRating:false").split(":");
 	normalThreadsSortMode = getThreadsSortModeByName(normal[0]);
 	normalThreadsSortSubThreads = parseBool(normal[1]);
 
-	var badThreads = GM_getValue("TrollExBadTheadsSorting", "none:false").split(":");
+	var badThreads = GM_getValue("TrollExBadTheadsSorting", "threadRating:false").split(":");
 	badThreadsSortMode = getThreadsSortModeByName(badThreads[0]);
 	badThreadsSortSubThreads = parseBool(badThreads[1]);
 	
-	var badUser = GM_getValue("TrollExBadUserTheadsSorting", "none:false").split(":");
+	var badUser = GM_getValue("TrollExBadUserTheadsSorting", "userRating:false").split(":");
 	badUserThreadsSortMode = getThreadsSortModeByName(badUser[0]);
 	badUserThreadsSortSubThreads = parseBool(badUser[1]);
 }
