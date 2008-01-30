@@ -392,7 +392,11 @@ function writeThreadSortModes(){
 
 function readUserRatings(){
 	var allRatings = GM_getValue("TrollExUserRatings", "");
-	userRatings = allRatings.split(",");	
+	if(allRatings == ""){
+		userRatings = new Array();
+	}else{
+		userRatings = allRatings.split(",");
+	}
 }
 
 function writeUserRatings(){
