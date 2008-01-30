@@ -16,7 +16,7 @@
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersionDate = "30.01.2008 15:09:00";
+var trollExVersionDate = "30.01.2008 15:35:00";
 var trollExDisplayVersion = "0.80"
 var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
 var updateXML;
@@ -1230,17 +1230,21 @@ badThreadsContainer.appendChild(badThreadsTitle);
 badUsersContainer = document.createElement("div");
 badUsersContainer.appendChild(badUsersTitle);
 
-threadList.parentNode.insertBefore(normalSorting, threadList.nextSibling);
-threadList.parentNode.insertBefore(normalThreadsList, normalSorting.nextSibling);
-threadList.parentNode.insertBefore(badThreadsContainer, normalThreadsList.nextSibling);
-threadList.parentNode.insertBefore(badUsersContainer, badThreadsContainer.nextSibling);
+if(threadList){
+	threadList.parentNode.insertBefore(normalSorting, threadList.nextSibling);
+	threadList.parentNode.insertBefore(normalThreadsList, normalSorting.nextSibling);
+	threadList.parentNode.insertBefore(badThreadsContainer, normalThreadsList.nextSibling);
+	threadList.parentNode.insertBefore(badUsersContainer, badThreadsContainer.nextSibling);
+}
 
 var untereZeileRes  = document.evaluate( "//ul[@class='forum_aktion']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
 var untereZeile = untereZeileRes.snapshotItem(0);
 untereZeile.parentNode.insertBefore(trollExContainer, untereZeile.nextSilbing);
 
 createUserRatingList();
-moveThreads(threadList);
+if(threadList){
+	moveThreads(threadList);
+}
 
 pageCount = getPageCount();
 
