@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Heise TrollEx
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
-// @description   Heise TrollEx Version 0.81. Erhöht den Komfort des Heise Forums.
+// @description   Heise TrollEx Version 0.82. Erhöht den Komfort des Heise Forums.
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
 
@@ -16,8 +16,8 @@
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersionDate = "30.01.2008 16:03:00";
-var trollExDisplayVersion = "0.81"
+var trollExVersionDate = "31.01.2008 11:10:00";
+var trollExDisplayVersion = "0.82" //Don't forget to update the version in the Greasemonkey description!
 var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
 var updateXML;
 
@@ -183,7 +183,9 @@ function pageLoaded(responseDetails){
 			
 			var pageThreadListRes = document.evaluate(".//ul[@class='thread_tree']", docNode, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
 			var pageThreadList = pageThreadListRes.snapshotItem(0);
-			moveThreads(pageThreadList);
+			if(pageThreadList){
+				moveThreads(pageThreadList);
+			}
 		} else {
 		    alert("Problem retrieving XML data");
 		}
@@ -354,10 +356,40 @@ function updateForumNavis(){
 				navi.insertBefore(li, expandAll);
 				navi.insertBefore(document.createTextNode(" "), expandAll);
 				
-			}
+			}			
 		}
-		
-		
+		// Neuere
+		if(currentPage - mergePagesCount > 0){
+			GM_log("link");
+			var li = document.createElement("li");
+			var link = document.createElement("a");		
+			link.appendChild(document.createTextNode("Neuere"));
+			link.href=baseURL+ "hs-"+((currentPage-mergePagesCount-1)*16)+"/";;
+			li.appendChild(link);
+			navi.insertBefore(li, expandAll);
+			navi.insertBefore(document.createTextNode(" "), expandAll);			
+		}else{
+			GM_log("text");
+			var li = document.createElement("li");
+			li.appendChild(document.createTextNode("Neuere "));
+			navi.insertBefore(li, expandAll);
+		}
+		// Ältere
+		if(currentPage + mergePagesCount < pageCount){
+			GM_log("link");
+			var li = document.createElement("li");
+			var link = document.createElement("a");		
+			link.appendChild(document.createTextNode("Ältere"));
+			link.href=baseURL+ "hs-"+((currentPage+mergePagesCount-1)*16)+"/";;
+			li.appendChild(link);
+			navi.insertBefore(li, expandAll);
+			navi.insertBefore(document.createTextNode(" "), expandAll);			
+		}else{
+			GM_log("text");
+			var li = document.createElement("li");
+			li.appendChild(document.createTextNode("Ältere "));
+			navi.insertBefore(li, expandAll);
+		}	
 	}
 }
 
@@ -804,10 +836,16 @@ function moveThreads(listOfThreads){
 			activeThread = true;
 		}else{
 			var nameRes = document.evaluate("./div/div[@class='thread_user']" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-			nameNode = nameRes.snapshotItem(0);
-			activeThread = false;
+			if(nameRes.snapshotLength > 0){
+				nameNode = nameRes.snapshotItem(0);
+				activeThread = false;
+			}else{
+				GM_log("kein Name gefunden!");
+			}
 		}
-		username = trimName(nameNode.innerHTML);
+		if(nameNode){
+			username = trimName(nameNode.innerHTML);
+		}
 		
 		
 		var threadRatingRes = document.evaluate("./div/div[@class='thread_votechart']/a/img", row, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
@@ -1050,7 +1088,10 @@ readUserRatings();
 readThreadSortModes();
 
 var threadListRes = document.evaluate("//ul[@class='thread_tree']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
-var threadList = threadListRes.snapshotItem(0);
+var threadList;
+if(threadListRes.snapshotLength > 0){
+	threadList = threadListRes.snapshotItem(0);
+}
 
 var normalThreadsList = document.createElement('ul');
 normalThreadsList.setAttribute('class', 'thread_tree');
@@ -1256,7 +1297,7 @@ if(mergePagesCount > 1){
 		getPage(cp+i);	
 		i++;
 	}
-	if(window.location.href.search(/\/read/) < 0){
+	if(window.location.href.search(/\/list/) >= 0){
 		updateForumNavis();
 	}
 }
