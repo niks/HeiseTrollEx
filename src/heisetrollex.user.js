@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Heise TrollEx
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
-// @description   Heise TrollEx Version 0.83. Erhöht den Komfort des Heise Forums.
+// @description   Heise TrollEx Version 0.84. Erhöht den Komfort des Heise Forums.
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
 
@@ -16,8 +16,8 @@
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersionDate = "31.01.2008 14:52:00";
-var trollExDisplayVersion = "0.83" //Don't forget to update the version in the Greasemonkey description!
+var trollExVersionDate = "01.02.2008 19:33:00";
+var trollExDisplayVersion = "0.84" //Don't forget to update the version in the Greasemonkey description!
 var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
 var updateXML;
 
@@ -35,28 +35,40 @@ tmp.displayName = "Nicht sortieren";
 tmp.func = null;
 threadSortModes.push(tmp);
 
+var tmp = new Object();
+tmp.name = "originalOrder";
+tmp.displayName = "Orininal Reihenfolge";
+tmp.func = sortThreadByOriginalOrder;
+threadSortModes.push(tmp);
+
 tmp = new Object();
 tmp.name = "threadRating";
 tmp.displayName = "Nach Thread Bewertung";
-tmp.func = sortThreadRating;
+tmp.func = sortThreadsByThreadRating;
 threadSortModes.push(tmp);
 
 tmp = new Object();
 tmp.name = "userRating";
 tmp.displayName = "Nach User Bewertung";
-tmp.func = sortUserRating;
+tmp.func = sortThreadsByUserRating;
 threadSortModes.push(tmp);
 
 tmp = new Object();
 tmp.name = "userThreadRating";
 tmp.displayName = "Erst nach User Bewertung, dann nach Thread Bewertung";
-tmp.func = sortUserThreadRating;
+tmp.func = sortThreadsByUserAndThreadRating;
 threadSortModes.push(tmp);
 
 tmp = new Object();
 tmp.name = "threadUserRating";
 tmp.displayName = "Erst nach Thread Bewertung, dann nach User Bewertung";
-tmp.func = sortThreadUserRating;
+tmp.func = sortThreadsByThreadAndUserRating;
+threadSortModes.push(tmp);
+
+tmp = new Object();
+tmp.name = "threadDate";
+tmp.displayName = "Nach Datum";
+tmp.func = sortThreadsByDate;
 threadSortModes.push(tmp);
 
 
@@ -101,8 +113,7 @@ function checkForUpdates() {
 			method: 'GET',
 			url: latestVersionURL,
 			headers: {
-				'User-agent': 'Mozilla/4.0 (compatible) Greasemonkey',
-				'Accept': 'application/atom+xml,application/xml,text/xml',
+				'User-agent': 'Mozilla/4.0 (compatible) Greasemonkey Heise TrollEx',
 				'Cache-Control': 'no-cache', 
 			},
 			onload: updateVersionLoaded
@@ -141,7 +152,7 @@ function updateVersionLoaded(responseDetails){
 				GM_setValue("TrollExLastSucessfulUpdate", lastSucessfulUpdateTest.toGMTString()); 
 			}
 		} else {
-			trollExUpdateContainer.appendChild(document.createTextNode("TrollEx kann den Server nicht erreichen."));
+			trollExUpdateContainer.appendChild(document.createTextNode("TrollEx hat Probleme bei der Kommunikation mit dem Server."));
 			trollExUpdateContainer.appendChild(document.createTextNode(" Zuletzt erfolgreich überprüft am "+ lastSucessfulUpdateTest.toLocaleString()+" "));
 			trollExUpdateContainer.appendChild(checkNow);
 		}
@@ -157,38 +168,41 @@ function getPage(pageNo){
 		method: 'GET',
 		url: pageURL,
 		headers: {
-			'User-agent': 'Mozilla/4.0 (compatible) Greasemonkey',
-			'Accept': 'application/atom+xml,application/xml,text/xml',
+			'User-agent': 'Mozilla/4.0 (compatible) Greasemonkey Heise TrollEx',
 		},
-		onload: pageLoaded
+		onload: factoryPageLoaded(pageNo)
 	});
 }
 
-function pageLoaded(responseDetails){
-	if (responseDetails.readyState==4) { 
-		if (responseDetails.status==200) {
-			var docNode = document.createElement("div");
-			var body = responseDetails.responseText;
-			lines = body.split("\n");
-			var start, end;
-			for(var i = 0; i < lines.length; i++){
-				if(lines[i].search(/<body.*>/) >= 0){
-					start= i+1;
+function factoryPageLoaded(pageNo){
+	return function pageLoaded(responseDetails){
+		if (responseDetails.readyState==4) { 
+			if (responseDetails.status==200) {
+				var docNode = document.createElement("div");
+				var body = responseDetails.responseText;
+				lines = body.split("\n");
+				var start, end;
+				for(var i = 0; i < lines.length; i++){
+					if(lines[i].search(/<body.*>/) >= 0){
+						start= i+1;
+					}
+					if(lines[i].search(/<\/body>/) >= 0){
+						end = i-1;
+					}
 				}
-				if(lines[i].search(/<\/body>/) >= 0){
-					end = i-1;
+				body = lines.splice(start, end-start).join("\n");
+				docNode.innerHTML = body;
+				
+				var pageThreadListRes = document.evaluate(".//ul[@class='thread_tree']", docNode, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
+				var pageThreadList = pageThreadListRes.snapshotItem(0);
+				if(pageThreadList){
+					moveThreads(pageThreadList, pageNo);
 				}
+			} else {
+				trollExUpdateContainer.appendChild(document.createTextNode("TrollEx hat Probleme bei der Kommunikation mit dem Server."));
+				trollExUpdateContainer.appendChild(document.createTextNode(" Zuletzt erfolgreich überprüft am "+ lastSucessfulUpdateTest.toLocaleString()+" "));
+				trollExUpdateContainer.appendChild(checkNow);
 			}
-			body = lines.splice(start, end-start).join("\n");
-			docNode.innerHTML = body;
-			
-			var pageThreadListRes = document.evaluate(".//ul[@class='thread_tree']", docNode, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
-			var pageThreadList = pageThreadListRes.snapshotItem(0);
-			if(pageThreadList){
-				moveThreads(pageThreadList);
-			}
-		} else {
-		    alert("Problem retrieving XML data");
 		}
 	}
 }
@@ -361,7 +375,6 @@ function updateForumNavis(){
 		}
 		// Neuere
 		if(currentPage - mergePagesCount > 0){
-			GM_log("link");
 			var li = document.createElement("li");
 			var link = document.createElement("a");		
 			link.appendChild(document.createTextNode("Neuere"));
@@ -370,14 +383,12 @@ function updateForumNavis(){
 			navi.insertBefore(li, expandAll);
 			navi.insertBefore(document.createTextNode(" "), expandAll);			
 		}else{
-			GM_log("text");
 			var li = document.createElement("li");
 			li.appendChild(document.createTextNode("Neuere "));
 			navi.insertBefore(li, expandAll);
 		}
 		// Ältere
 		if(currentPage + mergePagesCount < pageCount){
-			GM_log("link");
 			var li = document.createElement("li");
 			var link = document.createElement("a");		
 			link.appendChild(document.createTextNode("Ältere"));
@@ -386,7 +397,6 @@ function updateForumNavis(){
 			navi.insertBefore(li, expandAll);
 			navi.insertBefore(document.createTextNode(" "), expandAll);			
 		}else{
-			GM_log("text");
 			var li = document.createElement("li");
 			li.appendChild(document.createTextNode("Ältere "));
 			navi.insertBefore(li, expandAll);
@@ -403,11 +413,49 @@ function parseBool(b){
 	GM_log("Error: Cannot parse "+b+" to a boolean");
 }
 
+function parseDec(d){
+	//remove 0 at the beginning of the string. Otherwise it'll interpret as an octal...		
+	var d2 = d.replace(/^0*/, "");
+	if(d2.length == 0){
+		return 0;
+	}
+	return parseInt(d2);
+}
+
 function parseDate(dateString){
+	if(dateString == ""){
+		// 01.01.1970 00:00:00
+		return new Date(0);
+	}
 	var tmp = dateString.split(" ");
 	var tmpDate = tmp[0].split(".");
-	var tmpTime = tmp[1].split(":");
-	var date = new Date(parseInt(tmpDate[2]), parseInt(tmpDate[1])-1, parseInt(tmpDate[0]), parseInt(tmpTime[0]), parseInt(tmpTime[1]), parseInt(tmpTime[2]));
+	var date;
+	var year;
+	if(tmpDate[2].length == 2){
+		year = parseDec(tmpDate[2]); 
+		// the following will do the next few years...
+		if(year >= 70){
+			year +=1900;
+		}else{
+			year +=2000;
+		}
+	}else{
+		year = parseDec(tmpDate[2]);
+	}
+	var month = parseDec(tmpDate[1]) - 1;
+	var day = parseDec(tmpDate[0]);
+	var hour = 0;
+	var minute = 0;
+	var second = 0;
+	if(tmp.length > 1){
+		var tmpTime = tmp[1].split(":");
+		hour = parseDec(tmpTime[0]);
+		minute = parseDec(tmpTime[1]);
+		if(tmpTime.length > 2){
+			second = parseDec(tmpTime[2]);
+		}
+	}
+	date = new Date(year, month, day, hour, minute, second);
 	return date;
 }
 
@@ -542,6 +590,13 @@ function factoryAdjustRating(user, adjust){
 		readUserRatings(); 
 
 		var rating = oldRating + parseInt(adjust);
+		
+		// ensure an maximum and minimum of 100 Points
+		if(rating > 100){
+			rating = 100;
+		}else if(rating < -100){
+			rating = -100;
+		}
 		setRatingOf(user, rating);
 		event.stopPropagation();
     	event.preventDefault();
@@ -605,6 +660,8 @@ function factoryAdjustMergePages(adjust){
 		var newValue = mergePagesCount + adjust;
 		if(newValue < 1){
 			newValue = 1;
+		}else if(newValue > 60){
+			newValue = 60;
 		}
 		mergePagesCount = newValue;
 		GM_setValue("TrollExMergePagesCount", newValue);
@@ -822,8 +879,11 @@ function getUserNameOfRow(row){
 	return trimName(nameNode.innerHTML);
 }
 
-function moveThreads(listOfThreads){
+function moveThreads(listOfThreads, pageNo){
 	var allArticles = document.evaluate(".//li[div/@class='hover' or div/@class='hover_line']", listOfThreads, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+	
+	// since mergePagesCount is <= 60, threadNo won't exceed 1000 
+	var threadNo = (pageNo - getCurrentPage()) * 16;
 	for (var i = 0; i < allArticles.snapshotLength; i++) {
 		var row = allArticles.snapshotItem(i);
 		
@@ -857,6 +917,25 @@ function moveThreads(listOfThreads){
 			threadRating = parseInt(rateElem.alt);
 		}
 		
+		var dateRes = document.evaluate("./div/div[@class='thread_date']", row, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		var date;
+		if(dateRes.snapshotLength > 0){
+			var d = dateRes.snapshotItem(0);
+			var dateNewRes = document.evaluate("./span[@class='beitrag_neu']", d, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+			if(dateNewRes.snapshotLength > 0){
+				date = trimName(dateNewRes.snapshotItem(0).innerHTML);
+			}else{
+				var dateActiveRes = document.evaluate("./span[@class='beitrag_aktiv']", d, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+				if(dateActiveRes.snapshotLength > 0){
+					date = trimName(dateActiveRes.snapshotItem(0).innerHTML);
+				}else{
+					date = trimName(d.innerHTML);
+				}
+			}
+			date = date.replace(/&nbsp;/ , " ");
+			date = parseDate(date).getTime();
+		}
+		
 		parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread]" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 		parentMoved = (parentMovedSearch.snapshotLength > 0);
 		
@@ -881,6 +960,9 @@ function moveThreads(listOfThreads){
 		// set some attributes for the later use
 		row.setAttribute("TrollExUserName", username);
 		row.setAttribute("TrollExThreadRating", threadRating);
+		row.setAttribute("TrollExOriginalOrder", threadNo);
+		row.setAttribute("TrollExDate", date);
+		threadNo++;
 		
 		if(!parentMoved){
 			if (userRating <= userRatingThreshold) {		
@@ -943,28 +1025,52 @@ function sortThreads(list, sortFunction, sortSubThreads){
 	}
 }
 
-function sortUserRating(a, b){
-	var vala = getRatingOf(a.getAttribute("TrollExUserName"));
-	var valb = getRatingOf(b.getAttribute("TrollExUserName"));
-	return valb-vala;
+function sortThreadsByDate(a, b){
+	var vala = parseInt(a.getAttribute("TrollExDate"));
+	var valb = parseInt(b.getAttribute("TrollExDate"));
+	return valb - vala;
 }
 
-function sortThreadRating(a, b){
-	var vala = parseInt(a.getAttribute("TrollExThreadRating"));
-	var valb = parseInt(b.getAttribute("TrollExThreadRating"));
-	return valb-vala;
+function sortThreadsByUserRating(a, b){
+	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 1000;
+	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 1000;
+	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder"));
+	valb += 999 - parseInt(b.getAttribute("TrollExOriginalOrder"));
+	return valb - vala;
 }
 
-function sortUserThreadRating(a, b){
-	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 1000 + parseInt(a.getAttribute("TrollExThreadRating"));
-	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 1000 + parseInt(b.getAttribute("TrollExThreadRating"));
-	return valb-vala;
+function sortThreadsByThreadRating(a, b){
+	var vala = parseInt(a.getAttribute("TrollExThreadRating")) * 1000;
+	var valb = parseInt(b.getAttribute("TrollExThreadRating")) * 1000;
+	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder"));
+	valb += 999 - parseInt(b.getAttribute("TrollExOriginalOrder"));
+	return valb - vala;
 }
 
-function sortThreadUserRating(a, b){
-	var vala = getRatingOf(a.getAttribute("TrollExUserName")) + parseInt(a.getAttribute("TrollExThreadRating")) * 1000;
-	var valb = getRatingOf(b.getAttribute("TrollExUserName")) + parseInt(b.getAttribute("TrollExThreadRating")) * 1000;
-	return valb-vala;
+function sortThreadByOriginalOrder(a, b){
+	var vala = parseInt(a.getAttribute("TrollExOriginalOrder"));
+	var valb = parseInt(b.getAttribute("TrollExOriginalOrder"));
+	return vala - valb;
+}
+
+function sortThreadsByUserAndThreadRating(a, b){
+	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 100000;
+	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 100000;
+	vala += parseInt(a.getAttribute("TrollExThreadRating")) * 1000;
+	valb += parseInt(b.getAttribute("TrollExThreadRating")) * 1000;
+	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder")); 
+	valb += 999 - parseInt(b.getAttribute("TrollExOriginalOrder"));
+	return valb - vala;
+}
+
+function sortThreadsByThreadAndUserRating(a, b){
+	var vala = parseInt(a.getAttribute("TrollExThreadRating")) * 100000;
+	var valb = parseInt(b.getAttribute("TrollExThreadRating")) * 100000;
+	vala += getRatingOf(a.getAttribute("TrollExUserName")) * 1000;
+	valb += getRatingOf(b.getAttribute("TrollExUserName")) * 1000;
+	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder"));
+	valb += 999 - parseInt(b.getAttribute("TrollExOriginalOrder"));
+	return valb - vala;
 }
 
 
@@ -1285,7 +1391,7 @@ untereZeile.parentNode.insertBefore(trollExContainer, untereZeile.nextSilbing);
 
 createUserRatingList();
 if(threadList){
-	moveThreads(threadList);
+	moveThreads(threadList, getCurrentPage());
 }
 
 pageCount = getPageCount();
@@ -1295,7 +1401,7 @@ if(mergePagesCount > 1){
 	
 	var i = 1;
 	while(cp + i <= pageCount && i < mergePagesCount){
-		getPage(cp+i);	
+		getPage(cp+i);
 		i++;
 	}
 	if(window.location.href.search(/\/list/) >= 0){
