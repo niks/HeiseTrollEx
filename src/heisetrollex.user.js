@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Heise TrollEx
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
-// @description   Heise TrollEx Version 0.84. Erhöht den Komfort des Heise Forums.
+// @description   Heise TrollEx Version 0.85. Erhöht den Komfort des Heise Forums.
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
 
@@ -16,8 +16,8 @@
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersionDate = "01.02.2008 19:33:00";
-var trollExDisplayVersion = "0.84" //Don't forget to update the version in the Greasemonkey description!
+var trollExVersionDate = "07.02.2008 17:50:00";
+var trollExDisplayVersion = "0.85" //Don't forget to update the version in the Greasemonkey description!
 var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
 var updateXML;
 
@@ -1054,8 +1054,8 @@ function sortThreadByOriginalOrder(a, b){
 }
 
 function sortThreadsByUserAndThreadRating(a, b){
-	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 100000;
-	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 100000;
+	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 100001;
+	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 100001;
 	vala += parseInt(a.getAttribute("TrollExThreadRating")) * 1000;
 	valb += parseInt(b.getAttribute("TrollExThreadRating")) * 1000;
 	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder")); 
@@ -1064,8 +1064,8 @@ function sortThreadsByUserAndThreadRating(a, b){
 }
 
 function sortThreadsByThreadAndUserRating(a, b){
-	var vala = parseInt(a.getAttribute("TrollExThreadRating")) * 100000;
-	var valb = parseInt(b.getAttribute("TrollExThreadRating")) * 100000;
+	var vala = parseInt(a.getAttribute("TrollExThreadRating")) * 100001;
+	var valb = parseInt(b.getAttribute("TrollExThreadRating")) * 100001;
 	vala += getRatingOf(a.getAttribute("TrollExUserName")) * 1000;
 	valb += getRatingOf(b.getAttribute("TrollExUserName")) * 1000;
 	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder"));
