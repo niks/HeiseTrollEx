@@ -22,7 +22,7 @@ var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTro
 var updateXML;
 
 var now = new Date();
-var yesterday = new Date( now.getTime() - 24*3600*1000);
+var yesterday = new Date( now.getTime() - 12 * 3600 * 1000);
 var lastSucessfulUpdateTest = new Date(GM_getValue("TrollExLastSucessfulUpdate", yesterday.toGMTString() ));
 var checkAnyway = false;
 
