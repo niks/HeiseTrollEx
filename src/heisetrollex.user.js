@@ -88,6 +88,11 @@ var trollExHP = document.createElement("a");
 trollExHP.href= "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/index.html";
 trollExHP.appendChild(document.createTextNode("TrollEx Homepage"));
 
+// TrollEx link to the update/downlaod page.
+var trollExUpdateLink = document.createElement("a");
+trollExUpdateLink.href= "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/download.html";
+trollExUpdateLink.appendChild(document.createTextNode("Update installieren"));
+
 // more global variables
 var userRatings;
 var threshold = GM_getValue("TrollExThreshold", -50);
@@ -139,6 +144,7 @@ function updateVersionLoaded(responseDetails){
 				updates.setAttribute("style", "color:red; font-weight:bold");
 				trollExUpdateContainer.appendChild(updates);
 				trollExUpdateContainer.appendChild(document.createTextNode(" Diese Version = "+trollExDisplayVersion+" < "+ latestDisplayVersion+" = neueste Version. "));
+				trollExUpdateContainer.appendChild(trollExUpdateLink);
 
 				
 			} else {
