@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Heise TrollEx
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
-// @description   Heise TrollEx Version 0.86. Erhöht den Komfort des Heise Forums.
+// @description   Heise TrollEx Version 0.87. Erhöht den Komfort des Heise Forums.
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
 
@@ -16,8 +16,8 @@
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersionDate = "13.02.2008 11:02:00";
-var trollExDisplayVersion = "0.86" //Don't forget to update the version in the Greasemonkey description!
+var trollExVersionDate = "13.02.2008 11:27:00";
+var trollExDisplayVersion = "0.87" //Don't forget to update the version in the Greasemonkey description!
 var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
 var updateXML;
 
