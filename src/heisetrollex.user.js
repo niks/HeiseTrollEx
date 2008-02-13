@@ -917,9 +917,21 @@ function moveThreads(listOfThreads, pageNo){
 			threadRating = parseInt(rateElem.alt);
 		}
 		
-		var dateRes = document.evaluate("./div/div[@class='thread_date']", row, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 		var date;
-		if(dateRes.snapshotLength > 0){
+
+		var newOrActiveDateRes = document.evaluate("./div/div[@class='thread_date']/span", row, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		if(newOrActiveDateRes.snapshotLength > 0){
+			date = trimName(newOrActiveDateRes.snapshotItem(0).innerHTML);			
+		}else{
+			var dateRes = document.evaluate("./div/div[@class='thread_date']", row, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+			if(dateRes.snapshotLength > 0){
+				date = trimName(dateRes.snapshotItem(0).innerHTML);
+			}
+		}
+		date = date.replace(/&nbsp;/ , " ");
+		date = parseDate(date).getTime();
+		
+/*		if(dateRes.snapshotLength > 0){
 			var d = dateRes.snapshotItem(0);
 			var dateNewRes = document.evaluate("./span[@class='new_post']", d, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 			if(dateNewRes.snapshotLength > 0){
@@ -934,7 +946,7 @@ function moveThreads(listOfThreads, pageNo){
 			}
 			date = date.replace(/&nbsp;/ , " ");
 			date = parseDate(date).getTime();
-		}
+		}*/
 		
 		parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread]" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 		parentMoved = (parentMovedSearch.snapshotLength > 0);
