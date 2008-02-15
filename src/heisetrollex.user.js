@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Heise TrollEx
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
-// @description   Heise TrollEx Version 0.87. Erhöht den Komfort des Heise Forums.
+// @description   Heise TrollEx Version 0.88. Erhöht den Komfort des Heise Forums.
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
 
@@ -16,13 +16,13 @@
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersionDate = "13.02.2008 11:27:00";
-var trollExDisplayVersion = "0.87" //Don't forget to update the version in the Greasemonkey description!
+var trollExVersionDate = "15.02.2008 12:32:00";
+var trollExDisplayVersion = "0.88" //Don't forget to update the version in the Greasemonkey description!
 var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
 var updateXML;
 
 var now = new Date();
-var yesterday = new Date( now.getTime() - 12 * 3600 * 1000);
+var yesterday = new Date( now.getTime() - 24 * 3600 * 1000);
 var lastSucessfulUpdateTest = new Date(GM_getValue("TrollExLastSucessfulUpdate", yesterday.toGMTString() ));
 var checkAnyway = false;
 
@@ -113,7 +113,7 @@ function checkForUpdates() {
 	while(trollExUpdateContainer.firstChild){
 		trollExUpdateContainer.removeChild(trollExUpdateContainer.firstChild);
 	}
-	if(checkAnyway || (lastSucessfulUpdateTest.getTime() + 24 * 3600 * 1000) < (now.getTime())){	
+	if(checkAnyway || (lastSucessfulUpdateTest.getTime() + 2 * 3600 * 1000) < (now.getTime())){	
 		GM_xmlhttpRequest({
 			method: 'GET',
 			url: latestVersionURL,
@@ -124,8 +124,8 @@ function checkForUpdates() {
 			onload: updateVersionLoaded
 		});
 	}else{
-		trollExUpdateContainer.appendChild(document.createTextNode("TrollEx ist aktuell (Version "+trollExDisplayVersion+"). "));
-		trollExUpdateContainer.appendChild(document.createTextNode(" Überprüft am "+ lastSucessfulUpdateTest.toLocaleString()+" "));
+		trollExUpdateContainer.appendChild(document.createTextNode("TrollEx (Version "+trollExDisplayVersion+") war zum Zeitpunkt der letzten Überprüfung ("));
+		trollExUpdateContainer.appendChild(document.createTextNode(lastSucessfulUpdateTest.toLocaleString()+") aktuell."));
 		trollExUpdateContainer.appendChild(checkNow);
 	}
 }
@@ -144,17 +144,13 @@ function updateVersionLoaded(responseDetails){
 				updates.setAttribute("style", "color:red; font-weight:bold");
 				trollExUpdateContainer.appendChild(updates);
 				trollExUpdateContainer.appendChild(document.createTextNode(" Diese Version = "+trollExDisplayVersion+" < "+ latestDisplayVersion+" = neueste Version. "));
-				trollExUpdateContainer.appendChild(trollExUpdateLink);
-
-				
+				trollExUpdateContainer.appendChild(trollExUpdateLink);				
 			} else {
 				// up to date
 				lastSucessfulUpdateTest = now;
-				trollExUpdateContainer.appendChild(document.createTextNode("TrollEx ist aktuell (Version "+trollExDisplayVersion+"). "));
-
+				trollExUpdateContainer.appendChild(document.createTextNode("TrollEx (Version "+trollExDisplayVersion+") ist aktuell!"));
 				trollExUpdateContainer.appendChild(document.createTextNode(" Überprüft am "+ lastSucessfulUpdateTest.toLocaleString()+" "));
 				trollExUpdateContainer.appendChild(checkNow);
-
 				GM_setValue("TrollExLastSucessfulUpdate", lastSucessfulUpdateTest.toGMTString()); 
 			}
 		} else {
