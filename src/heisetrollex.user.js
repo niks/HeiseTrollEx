@@ -897,6 +897,7 @@ function moveThreads(listOfThreads, pageNo){
 		var nameNode;
 		var activeThread;
 		
+		// determine the user name		
 		var activeNameRes = document.evaluate("./div/div[@class='thread_user']/span" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 		if(activeNameRes.snapshotLength > 0){
 			nameNode = activeNameRes.snapshotItem(0);
@@ -914,7 +915,7 @@ function moveThreads(listOfThreads, pageNo){
 			username = trimName(nameNode.innerHTML);
 		}
 		
-		
+		// detremine the thread rating
 		var threadRatingRes = document.evaluate("./div/div[@class='thread_votechart']/a/img", row, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 		var threadRating = 0;
 		
@@ -923,8 +924,8 @@ function moveThreads(listOfThreads, pageNo){
 			threadRating = parseInt(rateElem.alt);
 		}
 		
+		//determine the date		
 		var date;
-
 		var newOrActiveDateRes = document.evaluate("./div/div[@class='thread_date']/span", row, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 		if(newOrActiveDateRes.snapshotLength > 0){
 			date = trimName(newOrActiveDateRes.snapshotItem(0).innerHTML);			
@@ -936,28 +937,17 @@ function moveThreads(listOfThreads, pageNo){
 		}
 		date = date.replace(/&nbsp;/ , " ");
 		date = parseDate(date).getTime();
-		
-/*		if(dateRes.snapshotLength > 0){
-			var d = dateRes.snapshotItem(0);
-			var dateNewRes = document.evaluate("./span[@class='new_post']", d, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-			if(dateNewRes.snapshotLength > 0){
-				date = trimName(dateNewRes.snapshotItem(0).innerHTML);
-			}else{
-				var dateActiveRes = document.evaluate("./span[@class='beitrag_aktiv']", d, null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-				if(dateActiveRes.snapshotLength > 0){
-					date = trimName(dateActiveRes.snapshotItem(0).innerHTML);
-				}else{
-					date = trimName(d.innerHTML);
-				}
-			}
-			date = date.replace(/&nbsp;/ , " ");
-			date = parseDate(date).getTime();
-		}*/
-		
-		parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread]" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-		parentMoved = (parentMovedSearch.snapshotLength > 0);
-		
+
+		// determine the user rating
 		var userRating = getRatingOf(username);
+		
+		// check if parent nodes have already been moved 		
+		var parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread='userRating']" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		var parentMovedUserRating = (parentMovedSearch.snapshotLength > 0);
+
+		parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread='threadRating']" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		var parentMovedThreadRating = (parentMovedSearch.snapshotLength > 0);
+		
 		
 		var config, button;
 		
@@ -975,30 +965,30 @@ function moveThreads(listOfThreads, pageNo){
 		nameNode.firstChild.data = " "+username;
 		nameNode.insertBefore(config, nameNode.firstChild);
 		
-		// set some attributes for the later use
+		// set some attributes for the later use (sorting the list)
 		row.setAttribute("TrollExUserName", username);
 		row.setAttribute("TrollExThreadRating", threadRating);
 		row.setAttribute("TrollExOriginalOrder", threadNo);
 		row.setAttribute("TrollExDate", date);
 		threadNo++;
 		
-		if(!parentMoved){
-			if (userRating <= userRatingThreshold) {		
-				// remove this subthread
-				row.setAttribute("trollex_moved_thread", "true");
-				badUsersThreads.appendChild(row);
-				badUserThreadsCount++;
-			}else if(threadRating <= threshold) {
-				row.setAttribute("trollex_moved_thread", "true");
-		    	badThreadsList.appendChild(row);
-		    	badThreadsCount++;
-			}else {
-				if(row.parentNode.getAttribute("class") == "thread_tree"){
-					normalThreadsList.appendChild(row);
-					normalThreadsCount++;
-				}
+		
+		if (!parentMovedUserRating && userRating <= userRatingThreshold) {
+			// remove this subthread
+			row.setAttribute("trollex_moved_thread", "userRating");
+			badUsersThreads.appendChild(row);
+			badUserThreadsCount++;
+		}else if(!parentMovedUserRating && !parentMovedThreadRating && threadRating <= threshold) {
+			row.setAttribute("trollex_moved_thread", "threadRating");
+		   	badThreadsList.appendChild(row);
+		   	badThreadsCount++;
+		}else {
+			if(row.parentNode.getAttribute("class") == "thread_tree"){
+				normalThreadsList.appendChild(row);
+				normalThreadsCount++;
 			}
 		}
+		
 	}
 	updateCountTitles();
 	sortAllThreads();
