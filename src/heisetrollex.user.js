@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name          Heise TrollEx
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
-// @description   Heise TrollEx Version 0.88. Erhöht den Komfort des Heise Forums.
+// @description   Heise TrollEx Version 0.89. Erhöht den Komfort des Heise Forums.
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
 
@@ -16,8 +16,8 @@
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersionDate = "15.02.2008 12:32:00";
-var trollExDisplayVersion = "0.88" //Don't forget to update the version in the Greasemonkey description!
+var trollExVersionDate = "04.03.2008 19:30:00";
+var trollExDisplayVersion = "0.89" //Don't forget to update the version in the Greasemonkey description!
 var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
 var updateXML;
 
@@ -124,8 +124,10 @@ function checkForUpdates() {
 			onload: updateVersionLoaded
 		});
 	}else{
+		// work around: for some reason the "ä" in März looks ugly.
+		var dateString = lastSucessfulUpdateTest.toLocaleString().replace("Ã¤", "ä");
 		trollExUpdateContainer.appendChild(document.createTextNode("TrollEx (Version "+trollExDisplayVersion+") war zum Zeitpunkt der letzten Überprüfung ("));
-		trollExUpdateContainer.appendChild(document.createTextNode(lastSucessfulUpdateTest.toLocaleString()+") aktuell."));
+		trollExUpdateContainer.appendChild(document.createTextNode(dateString+") aktuell."));
 		trollExUpdateContainer.appendChild(checkNow);
 	}
 }
