@@ -1194,6 +1194,9 @@ function updateCountTitles(){
 	
 }
 
+//document.getElementById("container").setAttribute("style", "width:80em; position: relative; padding: 0; margin: 0;");
+//document.getElementById("container_content").setAttribute("style", "width:75em; min-width: 730px; position: relative; top: 100px; left: 0; float: left; background: #ffffff;");
+//document.getElementById("mitte").setAttribute("style", "float: right; width: 63em; min-width: 540px; background: #ffffff; margin-bottom: 2em; padding-right: 0.5em;");
 
 readUserRatings();
 readThreadSortModes();
