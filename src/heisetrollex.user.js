@@ -1,24 +1,26 @@
 // ==UserScript==
 // @name          Heise TrollEx
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
-// @description   Heise TrollEx Version 0.89. Erhöht den Komfort des Heise Forums.
+// @description   Heise TrollEx Version 0.90. Erhöht den Komfort des Heise Forums.
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
 
 // Originally programed from Hannes Planatscher © 2005, 2006 (http://www.planatscher.net/)
-// Modified from Michael Schnell © 2007, 2008 (http://www.informatik.uni-freiburg.de/~schnellm/)
+// Modified from Michael Schnell © 2007, 2008 (http://www.schnell-michael.de)
 
 // This Script is unter the Creative Commons Attribution 2.0 Licenes (http://creativecommons.org/licenses/by/2.0/)
 
+// TODO: The namespace is totally ugly and wrong. I should change it so something like "TrollEx"
+// to use the website was not the best idea. And it is spelled totally wrong, too.
 
 // **  global variables **
 
 var buttonStyle = "text-decoration:none; font-weight:bold; color:blue; cursor:pointer; padding-left:0px; padding-right:0px; padding-top:0px; padding-bottom:0px"
 
 // TrollEx version and update information
-var trollExVersionDate = "04.03.2008 19:30:00";
-var trollExDisplayVersion = "0.89" //Don't forget to update the version in the Greasemonkey description!
-var latestVersionURL = "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/update/version.txt";
+var trollExVersionDate = "24.12.2008 14:27:00";
+var trollExDisplayVersion = "0.90" //Don't forget to update the version in the Greasemonkey description!
+var latestVersionURL = "http://schnell-michael.de/HeiseTrollEx/update/version.txt";
 var updateXML;
 
 var now = new Date();
