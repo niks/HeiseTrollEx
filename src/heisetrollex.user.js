@@ -23,6 +23,10 @@ var trollExDisplayVersion = "0.90" //Don't forget to update the version in the G
 var latestVersionURL = "http://schnell-michael.de/HeiseTrollEx/update/version.txt";
 var updateXML;
 
+// Other configuration
+trollExHPURL              = "http://www.schnell-michael.de/HeiseTrollEx/index.html";
+trollExUpdateURL          = "http://www.schnell-michael.de/HeiseTrollEx/download.html";
+
 var now = new Date();
 var yesterday = new Date( now.getTime() - 24 * 3600 * 1000);
 var lastSucessfulUpdateTest = new Date(GM_getValue("TrollExLastSucessfulUpdate", yesterday.toGMTString() ));
@@ -87,12 +91,12 @@ var checkNow = createButton("Jetzt überprüfen", "Suche nach Updates starten", 
 
 // TrollEx homepage link node.
 var trollExHP = document.createElement("a");
-trollExHP.href= "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/index.html";
+trollExHP.href= trollExHPURL;
 trollExHP.appendChild(document.createTextNode("TrollEx Homepage"));
 
 // TrollEx link to the update/downlaod page.
 var trollExUpdateLink = document.createElement("a");
-trollExUpdateLink.href= "http://www.informatik.uni-freiburg.de/~schnellm/HeiseTrollEx/download.html";
+trollExUpdateLink.href= trollExUpdateURL;
 trollExUpdateLink.appendChild(document.createTextNode("Update installieren"));
 
 // more global variables
