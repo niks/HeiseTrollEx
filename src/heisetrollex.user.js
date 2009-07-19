@@ -5,8 +5,8 @@
 // @include       http://www.heise.de/*foren/*
 // ==/UserScript==
 
-// Originally programed from Hannes Planatscher © 2005, 2006 (http://www.planatscher.net/)
-// Modified from Michael Schnell © 2007, 2008 (http://www.schnell-michael.de)
+// Originally programmed by Hannes Planatscher © 2005, 2006 (http://www.planatscher.net/)
+// Modified by Michael Schnell © 2007-2009 (http://www.schnell-michael.de)
 
 // This Script is unter the Creative Commons Attribution 2.0 Licenes (http://creativecommons.org/licenses/by/2.0/)
 
