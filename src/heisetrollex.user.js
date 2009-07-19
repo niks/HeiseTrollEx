@@ -1062,8 +1062,8 @@ function sortThreadByOriginalOrder(a, b){
 }
 
 function sortThreadsByUserAndThreadRating(a, b){
-	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 100001;
-	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 100001;
+	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 101000;
+	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 101000;
 	vala += parseInt(a.getAttribute("TrollExThreadRating")) * 1000;
 	valb += parseInt(b.getAttribute("TrollExThreadRating")) * 1000;
 	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder")); 
@@ -1072,8 +1072,8 @@ function sortThreadsByUserAndThreadRating(a, b){
 }
 
 function sortThreadsByThreadAndUserRating(a, b){
-	var vala = parseInt(a.getAttribute("TrollExThreadRating")) * 100001;
-	var valb = parseInt(b.getAttribute("TrollExThreadRating")) * 100001;
+	var vala = parseInt(a.getAttribute("TrollExThreadRating")) * 101000;
+	var valb = parseInt(b.getAttribute("TrollExThreadRating")) * 101000;
 	vala += getRatingOf(a.getAttribute("TrollExUserName")) * 1000;
 	valb += getRatingOf(b.getAttribute("TrollExUserName")) * 1000;
 	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder"));
