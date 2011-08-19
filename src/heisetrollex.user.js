@@ -1168,8 +1168,8 @@ function sortRatingsByName(a, b){
 
 
 function updateCountTitles(){
-	while(badThreadsTitle.firstChild){
-		badThreadsTitle.removeChild(badThreadsTitle.firstChild);
+	while(badThreadRatingThreadsTitle.firstChild){
+		badThreadRatingThreadsTitle.removeChild(badThreadRatingThreadsTitle.firstChild);
 	}
 
 	var badThreadRatingTigleText;
@@ -1181,14 +1181,14 @@ function updateCountTitles(){
 	  badThreadRatingTigleText = "Heise TrollEx hat " +badThreadRatingCount + " schlecht bewertete Threads ausgefiltert:";
 	}
 	
-	badThreadsTitle.appendChild(document.createTextNode(badThreadRatingTigleText));
+	badThreadRatingThreadsTitle.appendChild(document.createTextNode(badThreadRatingTigleText));
 	
 	if(badThreadRatingCount > 0){	
 		var tmp=document.createElement("span");
 		tmp.appendChild(document.createTextNode("----"));
 		tmp.style.visibility ="hidden";		
-		badThreadsTitle.appendChild(tmp);
-		badThreadsTitle.appendChild(badThreadsVisibilityButton);
+		badThreadRatingThreadsTitle.appendChild(tmp);
+		badThreadRatingThreadsTitle.appendChild(badThreadsVisibilityButton);
 	}
 	
 	while(badUserRatingThreadsTitle.firstChild){
@@ -1238,8 +1238,8 @@ var badUserRatingThreads = document.createElement('ul');
 badUserRatingThreads.setAttribute('class', 'thread_tree');
 
 // create bad threads title
-var badThreadsTitle = document.createElement('span');
-badThreadsTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
+var badThreadRatingThreadsTitle = document.createElement('span');
+badThreadRatingThreadsTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
 var badThreadsVisibilityButton = createButton("Ein-/Ausblenden", "", switchBadThreadsVisibilty);
 
 // create the "threads of bad users" title element
@@ -1401,7 +1401,7 @@ userRatingListContainer = document.createElement("div");
 trollExContainer.appendChild(userRatingListContainer);
 
 badThreadsContainer = document.createElement("div");
-badThreadsContainer.appendChild(badThreadsTitle);
+badThreadsContainer.appendChild(badThreadRatingThreadsTitle);
 
 badUsersContainer = document.createElement("div");
 badUsersContainer.appendChild(badUserRatingThreadsTitle);
