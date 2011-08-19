@@ -106,7 +106,7 @@ var userRatingThreshold = GM_getValue("TrollExUserRatingThreshold", GM_getValue(
 
 var normalThreadsCount = 0;
 var badThreadsCount = 0;
-var badUserThreadsCount = 0;
+var badUserRatingCount = 0;
 
 var mergePagesCount = parseInt(GM_getValue("TrollExMergePagesCount", 3));
 var pageCount;
@@ -759,7 +759,7 @@ function updateVisibility(){
 		badThreadsVisibilityButton.firstChild.data= "Anzeigen";
 	}
 	if(badUsersVisible) {
-		if(badUserThreadsCount > 0){
+		if(badUserRatingCount > 0){
 			badUsersContainer.appendChild(badUserThreadsSorting);
 			badUsersContainer.appendChild(badUsersThreads);
 			badUsersVisibilityButton.firstChild.data= "Ausblenden";
@@ -982,7 +982,7 @@ function moveThreads(listOfThreads, pageNo){
 			// remove this subthread
 			row.setAttribute("trollex_moved_thread", "userRating");
 			badUsersThreads.appendChild(row);
-			badUserThreadsCount++;
+			badUserRatingCount++;
 		}else if(!parentMovedUserRating && !parentMovedThreadRating && threadRating <= threadRatingThreshold) {
 			row.setAttribute("trollex_moved_thread", "threadRating");
 		   	badThreadsList.appendChild(row);
@@ -1129,7 +1129,7 @@ function sortBadThreads(){
 }
 
 function sortBadUserThreads(){
-	if(badUserThreadsCount > 0 && badUserThreadsSortMode.func != null){
+	if(badUserRatingCount > 0 && badUserThreadsSortMode.func != null){
 		sortThreads(badUsersThreads, badUserThreadsSortMode.func, badUserThreadsSortSubThreads);
 	}
 }
@@ -1195,16 +1195,16 @@ function updateCountTitles(){
 		badUsersTitle.removeChild(badUsersTitle.firstChild);
 	}
 	var badUserThreadsText;
-	if(badUserThreadsCount==0){
+	if(badUserRatingCount==0){
 	  badUserThreadsText = "Heise TrollEx hat keine Threads von schlecht bewerteten Forenteilnehmern ausgefiltert.";
-	}else if(badUserThreadsCount==1){
+	}else if(badUserRatingCount==1){
 	  badUserThreadsText = "Heise TrollEx hat einen Thread von einem schlecht bewerteten Forenteilnehmer ausgefiltert:";
 	}else{
-	  badUserThreadsText = "Heise TrollEx hat " +badUserThreadsCount + " Threads von schlecht bewerteten Forenteilnehmern ausgefiltert:";
+	  badUserThreadsText = "Heise TrollEx hat " +badUserRatingCount + " Threads von schlecht bewerteten Forenteilnehmern ausgefiltert:";
 	}
 	badUsersTitle.appendChild(document.createTextNode(badUserThreadsText));
 
-	if(badUserThreadsCount > 0){
+	if(badUserRatingCount > 0){
 		tmp=document.createElement("span");
 		tmp.appendChild(document.createTextNode("----"));
 		tmp.style.visibility ="hidden";
