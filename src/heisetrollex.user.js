@@ -761,13 +761,13 @@ function updateVisibility(){
 	if(badUsersVisible) {
 		if(badUserRatingCount > 0){
 			badUsersContainer.appendChild(badUserThreadsSorting);
-			badUsersContainer.appendChild(badUsersThreads);
+			badUsersContainer.appendChild(badUserRatingThreads);
 			badUsersVisibilityButton.firstChild.data= "Ausblenden";
 		}
 	} else {
 		try {
 			badUsersContainer.removeChild(badUserThreadsSorting);
-			badUsersContainer.removeChild(badUsersThreads);
+			badUsersContainer.removeChild(badUserRatingThreads);
 		} catch (e) {
 			// ignore this
 		}
@@ -981,7 +981,7 @@ function moveThreads(listOfThreads, pageNo){
 		if (!parentMovedUserRating && userRating <= userRatingThreshold) {
 			// remove this subthread
 			row.setAttribute("trollex_moved_thread", "userRating");
-			badUsersThreads.appendChild(row);
+			badUserRatingThreads.appendChild(row);
 			badUserRatingCount++;
 		}else if(!parentMovedUserRating && !parentMovedThreadRating && threadRating <= threadRatingThreshold) {
 			row.setAttribute("trollex_moved_thread", "threadRating");
@@ -1130,7 +1130,7 @@ function sortBadThreads(){
 
 function sortBadUserThreads(){
 	if(badUserRatingCount > 0 && badUserThreadsSortMode.func != null){
-		sortThreads(badUsersThreads, badUserThreadsSortMode.func, badUserThreadsSortSubThreads);
+		sortThreads(badUserRatingThreads, badUserThreadsSortMode.func, badUserThreadsSortSubThreads);
 	}
 }
 
@@ -1234,8 +1234,8 @@ normalThreadsList.setAttribute('class', 'thread_tree');
 var badThreadsList = document.createElement('ul');
 badThreadsList.setAttribute('class', 'thread_tree');
 
-var badUsersThreads = document.createElement('ul');
-badUsersThreads.setAttribute('class', 'thread_tree');
+var badUserRatingThreads = document.createElement('ul');
+badUserRatingThreads.setAttribute('class', 'thread_tree');
 
 // create bad threads title
 var badThreadsTitle = document.createElement('span');
