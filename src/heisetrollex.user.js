@@ -1038,51 +1038,63 @@ function sortThreads(list, sortFunction, sortSubThreads){
 	}
 }
 
-function sortThreadsByDate(a, b){
+function sortThreadsByDate(a, b) {
 	var vala = parseInt(a.getAttribute("TrollExDate"));
 	var valb = parseInt(b.getAttribute("TrollExDate"));
 	return valb - vala;
 }
 
-function sortThreadsByUserRating(a, b){
-	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 1000;
-	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 1000;
-	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder"));
-	valb += 999 - parseInt(b.getAttribute("TrollExOriginalOrder"));
+function sortThreadsByUserRating(a, b) {
+	var vala = getRatingOf(a.getAttribute("TrollExUserName"));
+	var valb = getRatingOf(b.getAttribute("TrollExUserName"));
+	if(vala == valb) {
+		vala = parseInt(a.getAttribute("TrollExOriginalOrder"));
+		valb = parseInt(b.getAttribute("TrollExOriginalOrder"));
+	}
 	return valb - vala;
 }
 
-function sortThreadsByThreadRating(a, b){
-	var vala = parseInt(a.getAttribute("TrollExThreadRating")) * 1000;
-	var valb = parseInt(b.getAttribute("TrollExThreadRating")) * 1000;
-	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder"));
-	valb += 999 - parseInt(b.getAttribute("TrollExOriginalOrder"));
+function sortThreadsByThreadRating(a, b) {
+	var vala = parseInt(a.getAttribute("TrollExThreadRating"));
+	var valb = parseInt(b.getAttribute("TrollExThreadRating"));
+	if(vala == valb) {
+		vala = parseInt(a.getAttribute("TrollExOriginalOrder"));
+		valb = parseInt(b.getAttribute("TrollExOriginalOrder"));
+	}
 	return valb - vala;
 }
 
-function sortThreadByOriginalOrder(a, b){
+function sortThreadByOriginalOrder(a, b) {
 	var vala = parseInt(a.getAttribute("TrollExOriginalOrder"));
 	var valb = parseInt(b.getAttribute("TrollExOriginalOrder"));
 	return vala - valb;
 }
 
-function sortThreadsByUserAndThreadRating(a, b){
-	var vala = getRatingOf(a.getAttribute("TrollExUserName")) * 101000;
-	var valb = getRatingOf(b.getAttribute("TrollExUserName")) * 101000;
-	vala += parseInt(a.getAttribute("TrollExThreadRating")) * 1000;
-	valb += parseInt(b.getAttribute("TrollExThreadRating")) * 1000;
-	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder")); 
-	valb += 999 - parseInt(b.getAttribute("TrollExOriginalOrder"));
+function sortThreadsByUserAndThreadRating(a, b) {
+	var vala = getRatingOf(a.getAttribute("TrollExUserName"));
+	var valb = getRatingOf(b.getAttribute("TrollExUserName"));
+	if(vala == valb) {
+		vala = parseInt(a.getAttribute("TrollExThreadRating"));
+		valb = parseInt(b.getAttribute("TrollExThreadRating"));
+	}
+	if(vala == valb) {
+		vala = parseInt(a.getAttribute("TrollExOriginalOrder")); 
+		valb = parseInt(b.getAttribute("TrollExOriginalOrder"));
+	}
 	return valb - vala;
 }
 
-function sortThreadsByThreadAndUserRating(a, b){
-	var vala = parseInt(a.getAttribute("TrollExThreadRating")) * 101000;
-	var valb = parseInt(b.getAttribute("TrollExThreadRating")) * 101000;
-	vala += getRatingOf(a.getAttribute("TrollExUserName")) * 1000;
-	valb += getRatingOf(b.getAttribute("TrollExUserName")) * 1000;
-	vala += 999 - parseInt(a.getAttribute("TrollExOriginalOrder"));
-	valb += 999 - parseInt(b.getAttribute("TrollExOriginalOrder"));
+function sortThreadsByThreadAndUserRating(a, b) {
+	var vala = parseInt(a.getAttribute("TrollExThreadRating"));
+	var valb = parseInt(b.getAttribute("TrollExThreadRating"));
+	if(vala == valb) {
+		vala = getRatingOf(a.getAttribute("TrollExUserName"));
+		valb = getRatingOf(b.getAttribute("TrollExUserName"));
+	}
+	if(vala == valb) {
+		vala = parseInt(a.getAttribute("TrollExOriginalOrder"));
+		valb = parseInt(b.getAttribute("TrollExOriginalOrder"));
+	}
 	return valb - vala;
 }
 
