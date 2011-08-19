@@ -101,7 +101,7 @@ trollExUpdateLink.appendChild(document.createTextNode("Update installieren"));
 
 // more global variables
 var userRatings;
-var threshold = GM_getValue("TrollExThreshold", -50);
+var threadRatingThreshold = GM_getValue("TrollExThreadRatingThreshold", GM_getValue("TrollExThreshold", -50)); // for backwards compability: Read the old name "TrollExThreshold" as well.
 var userRatingThreshold = GM_getValue("TrollExUserThreshold", -2);;
 
 var normalThreadsCount = 0;
@@ -648,11 +648,11 @@ function getRatingDisplay(rating){
 
 function factoryAdjustThreshold(adjust){
 	return function(event){
-		threshold= parseInt(threshold) + parseInt(adjust);
-		GM_setValue("TrollExThreshold", threshold);
-		t = document.getElementById("TrollExThreshold");
+		threadRatingThreshold= parseInt(threadRatingThreshold) + parseInt(adjust);
+		GM_setValue("TrollExThreadRatingThreshold", threadRatingThreshold);
+		t = document.getElementById("TrollExThreadRatingThreshold");
 		t.removeChild(t.firstChild);
-		t.appendChild(document.createTextNode(" "+threshold+"% "));
+		t.appendChild(document.createTextNode(" "+threadRatingThreshold+"% "));
 	}
 }
 
@@ -983,7 +983,7 @@ function moveThreads(listOfThreads, pageNo){
 			row.setAttribute("trollex_moved_thread", "userRating");
 			badUsersThreads.appendChild(row);
 			badUserThreadsCount++;
-		}else if(!parentMovedUserRating && !parentMovedThreadRating && threadRating <= threshold) {
+		}else if(!parentMovedUserRating && !parentMovedThreadRating && threadRating <= threadRatingThreshold) {
 			row.setAttribute("trollex_moved_thread", "threadRating");
 		   	badThreadsList.appendChild(row);
 		   	badThreadsCount++;
@@ -1292,8 +1292,8 @@ thresholdGUI.appendChild(createButton("- -", "Threashold um 10 erniedrigen", fac
 thresholdGUI.appendChild(createButton("-", "Threashold um 5 erniedrigen", factoryAdjustThreshold(-5)));
 
 thresholdContainer = document.createElement("span");
-thresholdContainer.setAttribute("id", "TrollExThreshold");
-thresholdContainer.appendChild(document.createTextNode(" " + threshold + "% "));
+thresholdContainer.setAttribute("id", "TrollExThreadRatingThreshold");
+thresholdContainer.appendChild(document.createTextNode(" " + threadRatingThreshold + "% "));
 thresholdGUI.appendChild(thresholdContainer);
 
 thresholdGUI.appendChild(createButton("+", "Threashold um 5 erhöhen", factoryAdjustThreshold(5)));
@@ -1314,7 +1314,7 @@ userThresholdGUI.appendChild(createButton("- -", "Threashold um 2 erniedrigen", 
 userThresholdGUI.appendChild(createButton("-", "Threashold um 1 erniedrigen", factoryAdjustUserThreshold(-1)));
 
 userThresholdContainer = document.createElement("span");
-userThresholdContainer.setAttribute("id", "TrollExUserThreshold");
+userThresholdContainer.setAttribute("id", "TrollExThreadRatingThreshold");
 userThresholdContainer.appendChild(document.createTextNode(" " + userRatingThreshold + " "));
 userThresholdGUI.appendChild(userThresholdContainer);
 
