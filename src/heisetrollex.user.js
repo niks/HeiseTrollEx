@@ -613,8 +613,10 @@ function factoryAdjustRating(user, adjust){
     	event.preventDefault();
     	writeUserRatings();
     	updateDisplayedRatings(user);
-    	if(oldRating == 0 ){
-			createUserRatingList();    	
+		
+		// The user was probably not in the list before..
+		if(oldRating == 0 ) {
+			createUserRatingList(); // this will add the rated user to the visible list.  	
 		}
 	};
 }
