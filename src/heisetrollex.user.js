@@ -119,6 +119,7 @@ function checkForUpdates() {
 	while(trollExUpdateContainer.firstChild){
 		trollExUpdateContainer.removeChild(trollExUpdateContainer.firstChild);
 	}
+	// check every 2 ours for an updates.
 	if(checkAnyway || (lastSucessfulUpdateTest.getTime() + 2 * 3600 * 1000) < (now.getTime())){	
 		GM_xmlhttpRequest({
 			method: 'GET',
