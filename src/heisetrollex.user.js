@@ -596,7 +596,7 @@ function factoryAdjustRating(user, adjust){
 		// remember the oldRating of THIS instance.
 		var oldRating = parseInt(getRatingOf(user)) 
 
-		// reading is necessary because the user coul'd have multiple pages open
+		// reading is necessary because the user could have multiple pages open
 		// and changed the user ratings (in particular adding users) in a other tab/window.
 		readUserRatings(); 
 
