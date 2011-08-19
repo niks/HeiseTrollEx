@@ -102,7 +102,7 @@ trollExUpdateLink.appendChild(document.createTextNode("Update installieren"));
 // more global variables
 var userRatings;
 var threadRatingThreshold = GM_getValue("TrollExThreadRatingThreshold", GM_getValue("TrollExThreshold", -50)); // for backwards compability: Read the old name "TrollExThreshold" as well.
-var userRatingThreshold = GM_getValue("TrollExUserThreshold", -2);;
+var userRatingThreshold = GM_getValue("TrollExUserRatingThreshold", GM_getValue("TrollExUserThreshold", -2));  // for backwards compability: Read the old name "TrollExUserThreshold" as well.
 
 var normalThreadsCount = 0;
 var badThreadsCount = 0;
@@ -659,8 +659,8 @@ function factoryAdjustThreshold(adjust){
 function factoryAdjustUserThreshold(adjust){
 	return function(event){
 		userRatingThreshold= parseInt(userRatingThreshold) + parseInt(adjust);
-		GM_setValue("TrollExUserThreshold", userRatingThreshold);
-		t = document.getElementById("TrollExUserThreshold");
+		GM_setValue("TrollExUserRatingThreshold", userRatingThreshold);
+		t = document.getElementById("TrollExUserRatingThreshold");
 		t.removeChild(t.firstChild);
 		t.appendChild(document.createTextNode(" "+userRatingThreshold+" "));
 	}
