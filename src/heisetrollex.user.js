@@ -105,7 +105,7 @@ var threadRatingThreshold = GM_getValue("TrollExThreadRatingThreshold", GM_getVa
 var userRatingThreshold = GM_getValue("TrollExUserRatingThreshold", GM_getValue("TrollExUserThreshold", -2));  // for backwards compability: Read the old name "TrollExUserThreshold" as well.
 
 var normalThreadsCount = 0;
-var badThreadsCount = 0;
+var badThreadRatingCount = 0;
 var badUserRatingCount = 0;
 
 var mergePagesCount = parseInt(GM_getValue("TrollExMergePagesCount", 3));
@@ -744,7 +744,7 @@ function updateVisibility(){
 	userRatingVisible = GM_getValue("TrollExUserRatingVisibility", false);
 	
 	if(badThreadsVisible) {
-		if(badThreadsCount > 0){
+		if(badThreadRatingCount > 0){
 			badThreadsContainer.appendChild(badThreadsSorting);
 			badThreadsContainer.appendChild(badThreadRatingThreads);
 			badThreadsVisibilityButton.firstChild.data= "Ausblenden";
@@ -986,7 +986,7 @@ function moveThreads(listOfThreads, pageNo){
 		}else if(!parentMovedUserRating && !parentMovedThreadRating && threadRating <= threadRatingThreshold) {
 			row.setAttribute("trollex_moved_thread", "threadRating");
 		   	badThreadRatingThreads.appendChild(row);
-		   	badThreadsCount++;
+		   	badThreadRatingCount++;
 		}else {
 			if(row.parentNode.getAttribute("class") == "thread_tree"){
 				normalThreadsList.appendChild(row);
@@ -1123,7 +1123,7 @@ function sortNormalThreads(){
 }
 
 function sortBadThreads(){
-	if(badThreadsCount > 0 && badThreadsSortMode.func != null){
+	if(badThreadRatingCount > 0 && badThreadsSortMode.func != null){
 		sortThreads(badThreadRatingThreads, badThreadsSortMode.func, badThreadsSortSubThreads);
 	}
 }
@@ -1173,17 +1173,17 @@ function updateCountTitles(){
 	}
 
 	var badThreadRatingTigleText;
-	if(badThreadsCount==0){
+	if(badThreadRatingCount==0){
 	  badThreadRatingTigleText = "Heise TrollEx hat keine schlecht bewertete Threads ausgefiltert.";
-	}else if(badThreadsCount==1){
+	}else if(badThreadRatingCount==1){
 	  badThreadRatingTigleText = "Heise TrollEx hat einen schlecht bewerteten Thread ausgefiltert:";
 	}else{
-	  badThreadRatingTigleText = "Heise TrollEx hat " +badThreadsCount + " schlecht bewertete Threads ausgefiltert:";
+	  badThreadRatingTigleText = "Heise TrollEx hat " +badThreadRatingCount + " schlecht bewertete Threads ausgefiltert:";
 	}
 	
 	badThreadsTitle.appendChild(document.createTextNode(badThreadRatingTigleText));
 	
-	if(badThreadsCount > 0){	
+	if(badThreadRatingCount > 0){	
 		var tmp=document.createElement("span");
 		tmp.appendChild(document.createTextNode("----"));
 		tmp.style.visibility ="hidden";		
@@ -1191,8 +1191,8 @@ function updateCountTitles(){
 		badThreadsTitle.appendChild(badThreadsVisibilityButton);
 	}
 	
-	while(badUsersTitle.firstChild){
-		badUsersTitle.removeChild(badUsersTitle.firstChild);
+	while(badUserRatingThreadsTitle.firstChild){
+		badUserRatingThreadsTitle.removeChild(badUserRatingThreadsTitle.firstChild);
 	}
 	var badUserThreadsText;
 	if(badUserRatingCount==0){
@@ -1202,15 +1202,15 @@ function updateCountTitles(){
 	}else{
 	  badUserThreadsText = "Heise TrollEx hat " +badUserRatingCount + " Threads von schlecht bewerteten Forenteilnehmern ausgefiltert:";
 	}
-	badUsersTitle.appendChild(document.createTextNode(badUserThreadsText));
+	badUserRatingThreadsTitle.appendChild(document.createTextNode(badUserThreadsText));
 
 	if(badUserRatingCount > 0){
 		tmp=document.createElement("span");
 		tmp.appendChild(document.createTextNode("----"));
 		tmp.style.visibility ="hidden";
 		
-		badUsersTitle.appendChild(tmp);
-		badUsersTitle.appendChild(badUsersVisibilityButton);
+		badUserRatingThreadsTitle.appendChild(tmp);
+		badUserRatingThreadsTitle.appendChild(badUsersVisibilityButton);
 	}
 	
 }
@@ -1244,8 +1244,8 @@ var badThreadsVisibilityButton = createButton("Ein-/Ausblenden", "", switchBadTh
 
 // create the "threads of bad users" title element
 
-var badUsersTitle = document.createElement('span');
-badUsersTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
+var badUserRatingThreadsTitle = document.createElement('span');
+badUserRatingThreadsTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
 var badUsersVisibilityButton = createButton("Ein-/Ausblenden", "", switchBadUsersVisibilty);
 
 // create normel Threads sorting element.
@@ -1404,7 +1404,7 @@ badThreadsContainer = document.createElement("div");
 badThreadsContainer.appendChild(badThreadsTitle);
 
 badUsersContainer = document.createElement("div");
-badUsersContainer.appendChild(badUsersTitle);
+badUsersContainer.appendChild(badUserRatingThreadsTitle);
 
 if(threadList){
 	threadList.parentNode.insertBefore(normalSorting, threadList.nextSibling);
