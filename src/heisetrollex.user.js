@@ -105,6 +105,7 @@ var threadRatingThreshold = GM_getValue("TrollExThreadRatingThreshold", GM_getVa
 var userRatingThreshold = GM_getValue("TrollExUserRatingThreshold", GM_getValue("TrollExUserThreshold", -2));  // for backwards compability: Read the old name "TrollExUserThreshold" as well.
 
 var normalThreadsCount = 0;
+var badThreadsCount = 0;
 var badThreadRatingCount = 0;
 var badUserRatingCount = 0;
 
@@ -985,10 +986,12 @@ function moveThreads(listOfThreads, pageNo){
 			row.setAttribute("trollex_moved_thread", "userRating");
 			badUserRatingThreads.appendChild(row);
 			badUserRatingCount++;
+			badThreadsCount++;
 		}else if(!parentMovedUserRating && !parentMovedThreadRating && threadRating <= threadRatingThreshold) {
 			row.setAttribute("trollex_moved_thread", "threadRating");
 		   	badThreadRatingThreads.appendChild(row);
 		   	badThreadRatingCount++;
+				badThreadsCount++;
 		}else {
 			if(row.parentNode.getAttribute("class") == "thread_tree"){
 				normalThreadsList.appendChild(row);
