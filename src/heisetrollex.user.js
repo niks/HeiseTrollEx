@@ -1172,16 +1172,16 @@ function updateCountTitles(){
 		badThreadsTitle.removeChild(badThreadsTitle.firstChild);
 	}
 
-	var badThreadsText;
+	var badThreadRatingTigleText;
 	if(badThreadsCount==0){
-	  badThreadsText = "Heise TrollEx hat keine schlecht bewertete Threads ausgefiltert.";
+	  badThreadRatingTigleText = "Heise TrollEx hat keine schlecht bewertete Threads ausgefiltert.";
 	}else if(badThreadsCount==1){
-	  badThreadsText = "Heise TrollEx hat einen schlecht bewerteten Thread ausgefiltert:";
+	  badThreadRatingTigleText = "Heise TrollEx hat einen schlecht bewerteten Thread ausgefiltert:";
 	}else{
-	  badThreadsText = "Heise TrollEx hat " +badThreadsCount + " schlecht bewertete Threads ausgefiltert:";
+	  badThreadRatingTigleText = "Heise TrollEx hat " +badThreadsCount + " schlecht bewertete Threads ausgefiltert:";
 	}
 	
-	badThreadsTitle.appendChild(document.createTextNode(badThreadsText));
+	badThreadsTitle.appendChild(document.createTextNode(badThreadRatingTigleText));
 	
 	if(badThreadsCount > 0){	
 		var tmp=document.createElement("span");
