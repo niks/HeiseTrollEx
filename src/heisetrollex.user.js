@@ -104,6 +104,9 @@ var userRatings;
 var threadRatingThreshold = GM_getValue("TrollExThreadRatingThreshold", GM_getValue("TrollExThreshold", -50)); // for backwards compability: Read the old name "TrollExThreshold" as well.
 var userRatingThreshold = GM_getValue("TrollExUserRatingThreshold", GM_getValue("TrollExUserThreshold", -2));  // for backwards compability: Read the old name "TrollExUserThreshold" as well.
 
+var useThreadThreshold = GM_getValue("TrollExUseThreadThreshold", true);
+var useUserThreshold = GM_getValue("TrollExUseUserThreshold", true);
+
 var normalThreadsCount = 0;
 var badThreadsCount = 0;
 var badThreadRatingCount = 0;
@@ -950,12 +953,20 @@ function moveThreads(listOfThreads, pageNo){
 		var userRating = getRatingOf(username);
 		
 		// check if parent nodes have already been moved 		
-		var parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread='userRating']" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-		var parentMovedUserRating = (parentMovedSearch.snapshotLength > 0);
-
-		parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread='threadRating']" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
-		var parentMovedThreadRating = (parentMovedSearch.snapshotLength > 0);
+		var parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread]" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		var parentMoved = (parentMovedSearch.snapshotLength > 0);
+		if(parentMoved) {
+			var parentMovedReason = parentMovedSearch.snapshotItem(0).getAttribute("trollex_moved_thread");
+		}
 		
+		// get a pointer to the thread title
+		var threadTitleSearch = document.evaluate( "./div/div[@class='thread_title']/a" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+		var threadTitleNode;
+		var threadTitle;
+		if(threadTitleSearch.snapshotLength > 0) {
+			threadTitleNode = threadTitleSearch.snapshotItem(0);
+			threadTitle = threadTitleNode.getAttribute("title");
+		}
 		
 		var config, button;
 		
@@ -981,18 +992,23 @@ function moveThreads(listOfThreads, pageNo){
 		threadNo++;
 		
 		
-		if (!parentMovedUserRating && userRating <= userRatingThreshold) {
-			// remove this subthread
+		if(!parentMoved && useUserThreshold && userRating <= userRatingThreshold) {
 			row.setAttribute("trollex_moved_thread", "userRating");
+			if(threadTitleNode) {
+				threadTitleNode.setAttribute("title", "User rating zu schlecht (schlechter gleich "+userRatingThreshold+")");
+			}
 			badUserRatingThreads.appendChild(row);
 			badUserRatingCount++;
 			badThreadsCount++;
-		}else if(!parentMovedUserRating && !parentMovedThreadRating && threadRating <= threadRatingThreshold) {
+		} else if(!parentMoved && useThreadThreshold && threadRating <= threadRatingThreshold) {
 			row.setAttribute("trollex_moved_thread", "threadRating");
-		   	badThreadRatingThreads.appendChild(row);
-		   	badThreadRatingCount++;
-				badThreadsCount++;
-		}else {
+			if(threadTitleNode) {
+				threadTitleNode.setAttribute("title", "Thread rating zu schlecht");
+			}
+			badThreadRatingThreads.appendChild(row);
+			badThreadRatingCount++;
+			badThreadsCount++;
+		} else {
 			if(row.parentNode.getAttribute("class") == "thread_tree"){
 				normalThreadsList.appendChild(row);
 				normalThreadsCount++;
@@ -1235,22 +1251,28 @@ if(threadListRes.snapshotLength > 0){
 	threadList = threadListRes.snapshotItem(0);
 }
 
+// container for all normal threads
 var normalThreadsList = document.createElement('ul');
 normalThreadsList.setAttribute('class', 'thread_tree');
 
+// container for all filtered theads (use this, if they should not be sorted into seperate containers)
+var filteredThreads = document.createElement('ul');
+filteredThreads.setAttribute('class', 'thread_tree');
+
+// container for all filtered theads with a bad thread rating
 var badThreadRatingThreads = document.createElement('ul');
 badThreadRatingThreads.setAttribute('class', 'thread_tree');
 
+// container for all filtered threads with a bad user rating
 var badUserRatingThreads = document.createElement('ul');
 badUserRatingThreads.setAttribute('class', 'thread_tree');
 
-// create bad threads title
+// create the title for the bad rated threads
 var badThreadRatingThreadsTitle = document.createElement('span');
 badThreadRatingThreadsTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
 var badThreadsVisibilityButton = createButton("Ein-/Ausblenden", "", switchBadThreadsVisibilty);
 
-// create the "threads of bad users" title element
-
+// create the title for the bad rated users
 var badUserRatingThreadsTitle = document.createElement('span');
 badUserRatingThreadsTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
 var badUsersVisibilityButton = createButton("Ein-/Ausblenden", "", switchBadUsersVisibilty);
@@ -1265,7 +1287,7 @@ var normalSorting = createThreadSortGUI("NormalSortingForm",
   	writeThreadSortModes();
   	sortNormalThreads();
   }, normalThreadsSortMode, normalThreadsSortSubThreads);
-normalSorting.setAttribute("style", "font-weight:bold");
+//normalSorting.setAttribute("style", "font-weight:bold");
 
 var badThreadsSorting = createThreadSortGUI("BadThreadsSortingForm", 
   function(){ 
@@ -1285,48 +1307,66 @@ var badUserThreadsSorting = createThreadSortGUI("BadUserThreadsSortingForm",
   	sortBadUserThreads();
   }, badUserThreadsSortMode, badUserThreadsSortSubThreads);
 
-// create the threshold GUI 
-thresholdGUI = document.createElement('div');
+// ** create the filter config GUI  **
+filterThresholdGUI = document.createElement('div');
 
-thresholdGUI.appendChild(document.createTextNode("Schwellwert ab dem schlecht bewertete Threads ausgefiltert werden sollen: "));
+filterThresholdGUI.appendChild(document.createTextNode("Threads ausfiltern"));
+filterUL = document.createElement("ul");
+filterThresholdGUI.appendChild(filterUL);
 
-tmp=document.createElement("span");
-tmp.appendChild(document.createTextNode("----"));
-tmp.style.visibility ="hidden";
-thresholdGUI.appendChild(tmp);
+// thread voting
+filterLI = document.createElement("li");
+filterUL.appendChild(filterLI);
 
-thresholdGUI.appendChild(createButton("- -", "Threashold um 10 erniedrigen", factoryAdjustThreshold(-10)));
-thresholdGUI.appendChild(createButton("-", "Threashold um 5 erniedrigen", factoryAdjustThreshold(-5)));
+var cb = document.createElement("input");
+cb.setAttribute("type", "checkbox");
+cb.setAttribute("name", "SortSubThreads");
+cb.setAttribute("value", "true");
+if(useThreadThreshold) {
+	cb.setAttribute("checked", "checked");
+}
+cb.addEventListener('change', function() { useThreadThreshold = !useThreadThreshold; GM_log("useThreadThreshold = "+useThreadThreshold); GM_setValue("TrollExUseThreadThreshold", useThreadThreshold); }, true);
+filterLI.appendChild(cb);
+
+filterLI.appendChild(document.createTextNode("die schlechter als "));
+filterLI.appendChild(createButton("- -", "Threashold um 10 erniedrigen", factoryAdjustThreshold(-10)));
+filterLI.appendChild(createButton("-", "Threashold um 5 erniedrigen", factoryAdjustThreshold(-5)));
 
 thresholdContainer = document.createElement("span");
 thresholdContainer.setAttribute("id", "TrollExThreadRatingThreshold");
 thresholdContainer.appendChild(document.createTextNode(" " + threadRatingThreshold + "% "));
-thresholdGUI.appendChild(thresholdContainer);
+filterLI.appendChild(thresholdContainer);
 
-thresholdGUI.appendChild(createButton("+", "Threashold um 5 erhöhen", factoryAdjustThreshold(5)));
-thresholdGUI.appendChild(createButton("++", "Threashold um 10 erhöhen", factoryAdjustThreshold(10)));
+filterLI.appendChild(createButton("+", "Threashold um 5 erhöhen", factoryAdjustThreshold(5)));
+filterLI.appendChild(createButton("++", "Threashold um 10 erhöhen", factoryAdjustThreshold(10)));
+filterLI.appendChild(document.createTextNode(" bewertet wurden."));
 
+// user voting
+filterLI = document.createElement("li");
+filterUL.appendChild(filterLI);
 
-// create the user threshold gui
-userThresholdGUI = document.createElement('div');
+var cb = document.createElement("input");
+cb.setAttribute("type", "checkbox");
+cb.setAttribute("name", "SortSubThreads");
+cb.setAttribute("value", "true");
+if(useUserThreshold) {
+	cb.setAttribute("checked", "checked");
+}
+cb.addEventListener('change', function() {useUserThreshold = !useUserThreshold; GM_setValue("TrollExUseUserThreshold", useUserThreshold)}, true);
+filterLI.appendChild(cb);
 
-userThresholdGUI.appendChild(document.createTextNode("Schwellwert ab dem Threads von schlechten Forenteilnehmern ausgefiltert werden sollen: "));
-
-tmp=document.createElement("span");
-tmp.appendChild(document.createTextNode("----"));
-tmp.style.visibility ="hidden";
-userThresholdGUI.appendChild(tmp);
-
-userThresholdGUI.appendChild(createButton("- -", "Threashold um 2 erniedrigen", factoryAdjustUserThreshold(-2)));
-userThresholdGUI.appendChild(createButton("-", "Threashold um 1 erniedrigen", factoryAdjustUserThreshold(-1)));
+filterLI.appendChild(document.createTextNode("die von Usern geschrieben wurden, welche schlechter als "));
+filterLI.appendChild(createButton("- -", "Threashold um 2 erniedrigen", factoryAdjustUserThreshold(-2)));
+filterLI.appendChild(createButton("-", "Threashold um 1 erniedrigen", factoryAdjustUserThreshold(-1)));
 
 userThresholdContainer = document.createElement("span");
-userThresholdContainer.setAttribute("id", "TrollExThreadRatingThreshold");
+userThresholdContainer.setAttribute("id", "TrollExUserRatingThreshold");
 userThresholdContainer.appendChild(document.createTextNode(" " + userRatingThreshold + " "));
-userThresholdGUI.appendChild(userThresholdContainer);
+filterLI.appendChild(userThresholdContainer);
 
-userThresholdGUI.appendChild(createButton("+", "Threashold um 1 erhöhen", factoryAdjustUserThreshold(1)));
-userThresholdGUI.appendChild(createButton("++", "Threashold um 2 erhöhen", factoryAdjustUserThreshold(2)));
+filterLI.appendChild(createButton("+", "Threashold um 1 erhöhen", factoryAdjustUserThreshold(1)));
+filterLI.appendChild(createButton("++", "Threashold um 2 erhöhen", factoryAdjustUserThreshold(2)));
+filterLI.appendChild(document.createTextNode(" bewertet wurden."));
 
 // create the "merge pages" GUI
 
@@ -1374,35 +1414,35 @@ if(userRatings.length > 0){
 
 
 // create the config elements.
+trollExConfigContainer = document.createElement("div");
 
 trollExConfigTitle = document.createElement("span");
 trollExConfigTitle.setAttribute("style", "text-decoration:underline; font-weight:bold;");
 trollExConfigTitle.appendChild(document.createTextNode("TrollEx Konfiguration"));
+trollExConfigTitle.setAttribute("onClick", "");
+
 
 var trollExUpdateContainer = document.createElement("span");
 
-trollExContainer = document.createElement("div");
+trollExContainer = document.createElement("span");
 trollExContainer.appendChild(trollExConfigTitle);
-trollExContainer.appendChild(document.createElement("br"));
+//trollExContainer.appendChild(document.createElement("br"));
+
+// homepage link
 var hp = document.createElement("div");
 hp.setAttribute("style", "text-align:right");
 hp.appendChild(trollExHP);
 trollExContainer.appendChild(hp);
-trollExContainer.appendChild(document.createElement("br"));
+//trollExContainer.appendChild(document.createElement("br"));
 
 trollExContainer.appendChild(trollExUpdateContainer);
 
 trollExContainer.appendChild(document.createElement("br"));
-trollExContainer.appendChild(document.createElement("br"));
-trollExContainer.appendChild(thresholdGUI);
-trollExContainer.appendChild(document.createElement("br"));
-trollExContainer.appendChild(userThresholdGUI);
+trollExContainer.appendChild(filterThresholdGUI);
 trollExContainer.appendChild(document.createElement("br"));
 trollExContainer.appendChild(mergePagesGUI);
 trollExContainer.appendChild(document.createElement("br"));
 trollExContainer.appendChild(userRatingListTitle);
-
-
 
 userRatingListContainer = document.createElement("div");
 trollExContainer.appendChild(userRatingListContainer);
