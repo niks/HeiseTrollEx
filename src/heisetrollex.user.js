@@ -1118,6 +1118,8 @@ function getThreadsSortModeByName(name){
 			return threadSortModes[i];
 		}
 	}
+	GM_log("Warning: Sortmode " + name + " unknown. Using " + threadSortModes[0].name + " instead.");
+	return threadSortModes[0];
 }
 
 
