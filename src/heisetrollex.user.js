@@ -47,6 +47,12 @@ tmp.displayName = "Orininal Reihenfolge";
 tmp.func = sortThreadByOriginalOrder;
 threadSortModes.push(tmp);
 
+var tmp = new Object();
+tmp.name = "mixedRating";
+tmp.displayName = "Nach Bewertungsmix sortieren";
+tmp.func = sortThreadByMixedOrder;
+threadSortModes.push(tmp);
+
 tmp = new Object();
 tmp.name = "threadRating";
 tmp.displayName = "Nach Thread Bewertung";
@@ -101,16 +107,21 @@ trollExUpdateLink.appendChild(document.createTextNode("Update installieren"));
 
 // more global variables
 var userRatings;
+var threadRatingWeight = GM_getValue("TrollExThreadRatingWeight", 1);
+var userRatingWeight = GM_getValue("TrollExUserRatingWeight", 25);
 var threadRatingThreshold = GM_getValue("TrollExThreadRatingThreshold", GM_getValue("TrollExThreshold", -50)); // for backwards compability: Read the old name "TrollExThreshold" as well.
 var userRatingThreshold = GM_getValue("TrollExUserRatingThreshold", GM_getValue("TrollExUserThreshold", -2));  // for backwards compability: Read the old name "TrollExUserThreshold" as well.
+var mixedRatingThreshold = GM_getValue("TrollExMixedRatingThreshold", -100);
 
 var useThreadThreshold = GM_getValue("TrollExUseThreadThreshold", true);
 var useUserThreshold = GM_getValue("TrollExUseUserThreshold", true);
+var useMixedThreshold = GM_getValue("TrollExUseMixedThreshold", true);
 
 var normalThreadsCount = 0;
 var badThreadsCount = 0;
 var badThreadRatingCount = 0;
 var badUserRatingCount = 0;
+var badMixedRatingCount = 0;
 
 var mergePagesCount = parseInt(GM_getValue("TrollExMergePagesCount", 3));
 var pageCount;
@@ -672,6 +683,16 @@ function factoryAdjustUserThreshold(adjust){
 	}
 }
 
+function factoryAdjustMixedThreshold(adjust){
+	return function(event){
+		mixedRatingThreshold= parseInt(mixedRatingThreshold) + parseInt(adjust);
+		GM_setValue("TrollExMixedRatingThreshold", mixedRatingThreshold);
+		t = document.getElementById("TrollExMixedRatingThreshold");
+		t.removeChild(t.firstChild);
+		t.appendChild(document.createTextNode(" "+mixedRatingThreshold+" "));
+	}
+}
+
 function factoryAdjustMergePages(adjust){
 	return function(event){
 		var newValue = mergePagesCount + adjust;
@@ -747,6 +768,7 @@ function updateVisibility(){
 
 	badThreadsVisible = GM_getValue("TrollExBadThreadsVisibility", false);
 	badUsersVisible = GM_getValue("TrollExBadUsersVisibility", false);
+	badMixedVisible = GM_getValue("TrollExBadMixedThreadsVisibility", false);
 	userRatingVisible = GM_getValue("TrollExUserRatingVisibility", false);
 	
 	if(badThreadsVisible) {
@@ -779,6 +801,21 @@ function updateVisibility(){
 		}
 		badUsersVisibilityButton.firstChild.data= "Anzeigen";
 	}
+	if(badMixedVisible) {
+		if(badMixedRatingCount > 0){
+			//badMixedRatingContainer.appendChild(badMixedThreadsSorting);
+			badMixedRatingContainer.appendChild(badMixedRatingThreads);
+			badMixedVisibilityButton.firstChild.data= "Ausblenden";
+		}
+	} else {
+		try {
+			//badMixedRatingContainer.removeChild(badMixedThreadsSorting);
+			badMixedRatingContainer.removeChild(badMixedRatingThreads);
+		} catch (e) {
+			// ignore this
+		}
+		badMixedVisibilityButton.firstChild.data= "Anzeigen";
+	}	
 	
 	if(userRatingVisible) {
 		userRatingListContainer.appendChild(userRatingList);
@@ -807,6 +844,13 @@ function switchBadUsersVisibilty() {
 	visible = GM_getValue("TrollExBadUsersVisibility", false);
 	visible = !visible;
 	GM_setValue("TrollExBadUsersVisibility", visible);
+	updateVisibility();
+}
+
+function switchMixedVisibilty() {
+	visible = GM_getValue("TrollExBadMixedThreadsVisibility", false);
+	visible = !visible;
+	GM_setValue("TrollExBadMixedThreadsVisibility", visible);
 	updateVisibility();
 }
 
@@ -952,6 +996,9 @@ function moveThreads(listOfThreads, pageNo){
 		// determine the user rating
 		var userRating = getRatingOf(username);
 		
+		// calculate mixed rating
+		var mixedRating = calculateMixedRating(userRating, threadRating);
+				
 		// check if parent nodes have already been moved 		
 		var parentMovedSearch = document.evaluate( "ancestor::li[@trollex_moved_thread]" ,row , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
 		var parentMoved = (parentMovedSearch.snapshotLength > 0);
@@ -987,6 +1034,7 @@ function moveThreads(listOfThreads, pageNo){
 		// set some attributes for the later use (sorting the list)
 		row.setAttribute("TrollExUserName", username);
 		row.setAttribute("TrollExThreadRating", threadRating);
+		row.setAttribute("TrollExMixedRating", mixedRating);
 		row.setAttribute("TrollExOriginalOrder", threadNo);
 		row.setAttribute("TrollExDate", date);
 		threadNo++;
@@ -1008,9 +1056,20 @@ function moveThreads(listOfThreads, pageNo){
 			badThreadRatingThreads.appendChild(row);
 			badThreadRatingCount++;
 			badThreadsCount++;
+		} else if(!parentMoved && useMixedThreshold && mixedRating < mixedRatingThreshold) {
+			row.setAttribute("trollex_moved_thread", "mixedRating");
+			if(threadTitleNode) {
+				threadTitleNode.setAttribute("title", "Mixed rating zu schlecht ("+mixedRating+")");
+			}
+			badMixedRatingThreads.appendChild(row);
+			badMixedRatingCount++;
+			badThreadsCount++;
 		} else {
 			if(row.parentNode.getAttribute("class") == "thread_tree"){
 				normalThreadsList.appendChild(row);
+				if(threadTitleNode) {
+					threadTitleNode.setAttribute("title", "DEBUG: Mixed rating ist "+mixedRating);
+				}
 				normalThreadsCount++;
 			}
 		}
@@ -1059,6 +1118,21 @@ function sortThreads(list, sortFunction, sortSubThreads){
 	}
 }
 
+function calculateMixedRating(userRating, threadRating) {
+	return parseInt(threadRating) * parseInt(threadRatingWeight) + parseInt(userRating) * parseInt(userRatingWeight);
+}
+
+// TODO: Split the sort funcitons into two parts: 
+// - a generic sort function and 
+// - a set of value functions.
+
+function genericSort(a, b, valueFunction) {
+	var vala = valueFunction(a);
+	var valb = valueFunction(b);
+	return valb - vala;
+}
+
+
 function sortThreadsByDate(a, b) {
 	var vala = parseInt(a.getAttribute("TrollExDate"));
 	var valb = parseInt(b.getAttribute("TrollExDate"));
@@ -1070,6 +1144,16 @@ function sortThreadsByUserRating(a, b) {
 	var valb = getRatingOf(b.getAttribute("TrollExUserName"));
 	if(vala == valb) {
 		vala = parseInt(a.getAttribute("TrollExOriginalOrder"));
+		valb = parseInt(b.getAttribute("TrollExOriginalOrder"));
+	}
+	return valb - vala;
+}
+
+function sortThreadByMixedOrder(a, b) {
+	var vala = calculateMixedRating(getRatingOf(a.getAttribute("TrollExUserName")), parseInt(a.getAttribute("TrollExThreadRating")));
+	var valb = calculateMixedRating(getRatingOf(b.getAttribute("TrollExUserName")), parseInt(b.getAttribute("TrollExThreadRating")));
+	if(vala == valb) {
+		vala = parseInt(a.getAttribute("TrollExOriginalOrder")); 
 		valb = parseInt(b.getAttribute("TrollExOriginalOrder"));
 	}
 	return valb - vala;
@@ -1235,6 +1319,29 @@ function updateCountTitles(){
 		badUserRatingThreadsTitle.appendChild(tmp);
 		badUserRatingThreadsTitle.appendChild(badUsersVisibilityButton);
 	}
+
+
+	while(badMixedRatingThreadsTitle.firstChild){
+		badMixedRatingThreadsTitle.removeChild(badMixedRatingThreadsTitle.firstChild);
+	}
+	var badMixedThreadsText;
+	if(badMixedRatingCount==0){
+	  badMixedThreadsText = "Heise TrollEx hat keine Threads mit schlechtem Bewertungsmix ausgefiltert.";
+	}else if(badUserRatingCount==1){
+	  badMixedThreadsText = "Heise TrollEx hat einen Thread mit schlechtem Bewertungsmix ausgefiltert:";
+	}else{
+	  badMixedThreadsText = "Heise TrollEx hat " +badMixedRatingCount + " Threads mit schlechtem Bewertungsmix ausgefiltert:";
+	}
+	badMixedRatingThreadsTitle.appendChild(document.createTextNode(badMixedThreadsText));
+
+	if(badMixedRatingCount > 0){
+		tmp=document.createElement("span");
+		tmp.appendChild(document.createTextNode("----"));
+		tmp.style.visibility ="hidden";
+		
+		badMixedRatingThreadsTitle.appendChild(tmp);
+		badMixedRatingThreadsTitle.appendChild(badMixedVisibilityButton);
+	}
 	
 }
 
@@ -1267,6 +1374,10 @@ badThreadRatingThreads.setAttribute('class', 'thread_tree');
 var badUserRatingThreads = document.createElement('ul');
 badUserRatingThreads.setAttribute('class', 'thread_tree');
 
+// container for all filtered threads with a bad mixed rating
+var badMixedRatingThreads = document.createElement('ul');
+badMixedRatingThreads.setAttribute('class', 'thread_tree');
+
 // create the title for the bad rated threads
 var badThreadRatingThreadsTitle = document.createElement('span');
 badThreadRatingThreadsTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
@@ -1276,6 +1387,11 @@ var badThreadsVisibilityButton = createButton("Ein-/Ausblenden", "", switchBadTh
 var badUserRatingThreadsTitle = document.createElement('span');
 badUserRatingThreadsTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
 var badUsersVisibilityButton = createButton("Ein-/Ausblenden", "", switchBadUsersVisibilty);
+
+// create the title for the bad mixed rated threads
+var badMixedRatingThreadsTitle = document.createElement('span');
+badMixedRatingThreadsTitle.setAttribute("style", "text-decoration:none; font-weight:bold;");
+var badMixedVisibilityButton = createButton("Ein-/Ausblenden", "", switchMixedVisibilty);
 
 // create normel Threads sorting element.
 
@@ -1307,6 +1423,17 @@ var badUserThreadsSorting = createThreadSortGUI("BadUserThreadsSortingForm",
   	sortBadUserThreads();
   }, badUserThreadsSortMode, badUserThreadsSortSubThreads);
 
+  /*
+var badMixedThreadsSorting = createThreadSortGUI("BadMixedThreadsSortingForm",
+  function(){ 
+  	dispName = document.forms.namedItem("BadMixedThreadsSortingForm").elements.namedItem("SortDisplayName").value;
+  	badMixedThreadsSortMode = getThreadsSortModeByDisplayName(dispName);
+  	badMixedThreadsSortSubThreads = document.forms.namedItem("BadMixedThreadsSortingForm").elements.namedItem("SortSubThreads").checked;
+  	writeThreadSortModes();
+  	sortMixedUserThreads();
+  }, badMixedThreadsSortMode, badMixedThreadsSortSubThreads);
+  */
+  
 // ** create the filter config GUI  **
 filterThresholdGUI = document.createElement('div');
 
@@ -1367,6 +1494,33 @@ filterLI.appendChild(userThresholdContainer);
 filterLI.appendChild(createButton("+", "Threashold um 1 erhöhen", factoryAdjustUserThreshold(1)));
 filterLI.appendChild(createButton("++", "Threashold um 2 erhöhen", factoryAdjustUserThreshold(2)));
 filterLI.appendChild(document.createTextNode(" bewertet wurden."));
+
+//mixed rating
+filterLI = document.createElement("li");
+filterUL.appendChild(filterLI);
+
+var cb = document.createElement("input");
+cb.setAttribute("type", "checkbox");
+cb.setAttribute("name", "SortSubThreads");
+cb.setAttribute("value", "true");
+if(useMixedThreshold) {
+	cb.setAttribute("checked", "checked");
+}
+cb.addEventListener('change', function() {useMixedThreshold = !useMixedThreshold; GM_setValue("TrollExUseMixedThreshold", useMixedThreshold); }, true);
+filterLI.appendChild(cb);
+
+filterLI.appendChild(document.createTextNode("bei denen der Bewertungsmix schlechter als "));
+filterLI.appendChild(createButton("- -", "Threashold um 10 erniedrigen", factoryAdjustMixedThreshold(-10)));
+filterLI.appendChild(createButton("-", "Threashold um 1 erniedrigen", factoryAdjustMixedThreshold(-1)));
+
+mixedContainer = document.createElement("span");
+mixedContainer.setAttribute("id", "TrollExMixedRatingThreshold");
+mixedContainer.appendChild(document.createTextNode(" " + mixedRatingThreshold + " "));
+filterLI.appendChild(mixedContainer);
+
+filterLI.appendChild(createButton("+", "Threashold um 1 erhöhen", factoryAdjustMixedThreshold(1)));
+filterLI.appendChild(createButton("++", "Threashold um 10 erhöhen", factoryAdjustMixedThreshold(10)));
+filterLI.appendChild(document.createTextNode(" Punkte ist."));
 
 // create the "merge pages" GUI
 
@@ -1435,10 +1589,14 @@ hp.appendChild(trollExHP);
 trollExContainer.appendChild(hp);
 //trollExContainer.appendChild(document.createElement("br"));
 
+var mixedRatingConfigContainer = document.createElement("div");
+mixedRatingConfigContainer.appendChild(document.createTextNode("MixedRating = ThreadRating * + UserRating * "));
+
 trollExContainer.appendChild(trollExUpdateContainer);
 
 trollExContainer.appendChild(document.createElement("br"));
 trollExContainer.appendChild(filterThresholdGUI);
+trollExContainer.appendChild(mixedRatingConfigContainer);
 trollExContainer.appendChild(document.createElement("br"));
 trollExContainer.appendChild(mergePagesGUI);
 trollExContainer.appendChild(document.createElement("br"));
@@ -1453,11 +1611,16 @@ badThreadsContainer.appendChild(badThreadRatingThreadsTitle);
 badUsersContainer = document.createElement("div");
 badUsersContainer.appendChild(badUserRatingThreadsTitle);
 
+badMixedRatingContainer = document.createElement("div");
+badMixedRatingContainer.appendChild(badMixedRatingThreadsTitle);
+//badMixedRatingContainer.appendChild(badMixedRatingThreads);
+
 if(threadList){
 	threadList.parentNode.insertBefore(normalSorting, threadList.nextSibling);
 	threadList.parentNode.insertBefore(normalThreadsList, normalSorting.nextSibling);
 	threadList.parentNode.insertBefore(badThreadsContainer, normalThreadsList.nextSibling);
 	threadList.parentNode.insertBefore(badUsersContainer, badThreadsContainer.nextSibling);
+	threadList.parentNode.insertBefore(badMixedRatingContainer, badUsersContainer.nextSibling);
 }
 
 var untereZeileRes  = document.evaluate( "//ul[@class='forum_aktion']", document, null, XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE, null);
