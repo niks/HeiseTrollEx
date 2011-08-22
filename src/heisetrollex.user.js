@@ -720,6 +720,26 @@ function factoryAdjustMixedThreshold(adjust){
 	}
 }
 
+function factoryAdjustThreadRatingWeight(adjust){
+  return function(event){
+    threadRatingWeight = parseInt(threadRatingWeight) + parseInt(adjust);
+    GM_setValue("TrollExThreadRatingWeight", threadRatingWeight);
+    t = document.getElementById("TrollExThreadRatingWeight");
+    t.removeChild(t.firstChild);
+    t.appendChild(document.createTextNode(" "+threadRatingWeight+" "));
+  }
+}
+
+function factoryAdjustUserRatingWeight(adjust){
+  return function(event){
+    userRatingWeight = parseInt(userRatingWeight) + parseInt(adjust);
+    GM_setValue("TrollExUserRatingWeight", userRatingWeight);
+    t = document.getElementById("TrollExUserRatingWeight");
+    t.removeChild(t.firstChild);
+    t.appendChild(document.createTextNode(" "+userRatingWeight+" "));
+  }
+}
+
 function factoryAdjustMergePages(adjust){
 	return function(event){
 		var newValue = mergePagesCount + adjust;
@@ -1616,8 +1636,34 @@ hp.appendChild(trollExHP);
 trollExContainer.appendChild(hp);
 //trollExContainer.appendChild(document.createElement("br"));
 
+
+/* Configure mixed rating weights */
 var mixedRatingConfigContainer = document.createElement("div");
-mixedRatingConfigContainer.appendChild(document.createTextNode("MixedRating = ThreadRating * + UserRating * "));
+mixedRatingConfigContainer.appendChild(document.createTextNode("Bewertungsmix = Threadbewertung \u2A09 "));
+mixedRatingConfigContainer.appendChild(createButton("--", "Gewicht um 5 erniedrigen", factoryAdjustThreadRatingWeight(-5)));
+mixedRatingConfigContainer.appendChild(createButton("-",  "Gewicht um 1 erniedrigen", factoryAdjustThreadRatingWeight(-1)));
+
+threadRatingWeightContainer = document.createElement("span");
+threadRatingWeightContainer.setAttribute("id", "TrollExThreadRatingWeight");
+threadRatingWeightContainer.appendChild(document.createTextNode(" " + threadRatingWeight + " "));
+mixedRatingConfigContainer.appendChild(threadRatingWeightContainer);
+
+mixedRatingConfigContainer.appendChild(createButton("+",  "Gewicht um 1 erniedrigen", factoryAdjustThreadRatingWeight(1)));
+mixedRatingConfigContainer.appendChild(createButton("++", "Gewicht um 5 erhöhen", factoryAdjustThreadRatingWeight(5)));
+
+mixedRatingConfigContainer.appendChild(document.createTextNode(" + Userbewertung \u2A09 "));
+mixedRatingConfigContainer.appendChild(createButton("--", "Gewicht um 5 erniedrigen", factoryAdjustUserRatingWeight(-5)));
+mixedRatingConfigContainer.appendChild(createButton("-",  "Gewicht um 1 erniedrigen", factoryAdjustUserRatingWeight(-1)));
+
+userRatingWeightContainer = document.createElement("span");
+userRatingWeightContainer.setAttribute("id", "TrollExUserRatingWeight");
+userRatingWeightContainer.appendChild(document.createTextNode(" " + userRatingWeight + " "));
+mixedRatingConfigContainer.appendChild(userRatingWeightContainer);
+
+mixedRatingConfigContainer.appendChild(createButton("+",  "Gewicht um 1 erniedrigen", factoryAdjustUserRatingWeight(1)));
+mixedRatingConfigContainer.appendChild(createButton("++", "Gewicht um 5 erhöhen", factoryAdjustUserRatingWeight(5)));
+
+
 
 trollExContainer.appendChild(trollExUpdateContainer);
 
