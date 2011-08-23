@@ -88,10 +88,12 @@ threadSortModes.push(tmp);
 var normalThreadsSortMode = getThreadsSortModeByName("userThreadRating");
 var badThreadsSortMode = getThreadsSortModeByName("threadRating");
 var badUserThreadsSortMode = getThreadsSortModeByName("userRating");
+var badMixedThreadsSortMode = getThreadsSortModeByName("mixedRating");
 
 var normalThreadsSortSubThreads = false;
 var badThreadsSortSubThreads = false;
 var badUserThreadsSortSubThreads = false;
+var badMixedThreadsSortSubThreads = false;
 
 // "check now" button
 var checkNow = createButton("Jetzt überprüfen", "Suche nach Updates starten", function(){checkAnyway=true; checkForUpdates()});
@@ -524,12 +526,17 @@ function readThreadSortModes(){
 	var badUser = all_getValue("TrollExBadUserTheadsSorting", "userRating:false").split(":");
 	badUserThreadsSortMode = getThreadsSortModeByName(badUser[0]);
 	badUserThreadsSortSubThreads = parseBool(badUser[1]);
+	
+	var mixed = GM_getValue("TrollExMixedTheadsSorting", "mixedRating:false").split(":");
+	badMixedThreadsSortMode = getThreadsSortModeByName(mixed[0]);
+	badMixedThreadsSortSubThreads = parseBool(mixed[1]);
 }
 
 function writeThreadSortModes(){
 	all_setValue("TrollExNormalTheadsSorting", normalThreadsSortMode.name+":"+normalThreadsSortSubThreads);
 	all_setValue("TrollExBadTheadsSorting", badThreadsSortMode.name+":"+badThreadsSortSubThreads);
 	all_setValue("TrollExBadUserTheadsSorting", badUserThreadsSortMode.name+":"+badUserThreadsSortSubThreads);
+	GM_setValue("TrollExMixedTheadsSorting", badMixedThreadsSortMode.name+":"+badMixedThreadsSortSubThreads);
 }
 
 function readUserRatings(){
@@ -850,13 +857,13 @@ function updateVisibility(){
 	}
 	if(badMixedVisible) {
 		if(badMixedRatingCount > 0){
-			//badMixedRatingContainer.appendChild(badMixedThreadsSorting);
+			badMixedRatingContainer.appendChild(badMixedThreadsSorting);
 			badMixedRatingContainer.appendChild(badMixedRatingThreads);
 			badMixedVisibilityButton.firstChild.data= "Ausblenden";
 		}
 	} else {
 		try {
-			//badMixedRatingContainer.removeChild(badMixedThreadsSorting);
+			badMixedRatingContainer.removeChild(badMixedThreadsSorting);
 			badMixedRatingContainer.removeChild(badMixedRatingThreads);
 		} catch (e) {
 			// ignore this
@@ -1290,10 +1297,17 @@ function sortBadUserThreads(){
 	}
 }
 
+function sortBadMixedThreads(){
+  if(badMixedRatingCount > 0 && badMixedThreadsSortMode.func != null){
+    sortThreads(badMixedRatingThreads, badMixedThreadsSortMode.func, badMixedThreadsSortSubThreads);
+  }
+}
+
 function sortAllThreads(){
 	sortNormalThreads();
 	sortBadThreads();
 	sortBadUserThreads();
+	sortBadMixedThreads();
 }
 
 function sortUserRatings(sortFunction){
@@ -1472,16 +1486,14 @@ var badUserThreadsSorting = createThreadSortGUI("BadUserThreadsSortingForm",
   	sortBadUserThreads();
   }, badUserThreadsSortMode, badUserThreadsSortSubThreads);
 
-  /*
 var badMixedThreadsSorting = createThreadSortGUI("BadMixedThreadsSortingForm",
   function(){ 
   	dispName = document.forms.namedItem("BadMixedThreadsSortingForm").elements.namedItem("SortDisplayName").value;
   	badMixedThreadsSortMode = getThreadsSortModeByDisplayName(dispName);
   	badMixedThreadsSortSubThreads = document.forms.namedItem("BadMixedThreadsSortingForm").elements.namedItem("SortSubThreads").checked;
   	writeThreadSortModes();
-  	sortMixedUserThreads();
+  	sortBadMixedThreads();
   }, badMixedThreadsSortMode, badMixedThreadsSortSubThreads);
-  */
   
 // ** create the filter config GUI  **
 filterThresholdGUI = document.createElement('div');
