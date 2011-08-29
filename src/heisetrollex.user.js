@@ -7,6 +7,7 @@
 
 // Originally programmed by Hannes Planatscher © 2005, 2006 (http://www.planatscher.net/)
 // Modified by Michael Schnell © 2007-2009 (http://www.schnell-michael.de)
+// Modified for Chrome by Roman Zechmeister © 2011
 
 // This Script is unter the Creative Commons Attribution 2.0 Licenes (http://creativecommons.org/licenses/by/2.0/)
 
@@ -29,7 +30,7 @@ trollExUpdateURL          = "http://www.schnell-michael.de/HeiseTrollEx/download
 
 var now = new Date();
 var yesterday = new Date( now.getTime() - 24 * 3600 * 1000);
-var lastSucessfulUpdateTest = new Date(GM_getValue("TrollExLastSucessfulUpdate", yesterday.toGMTString() ));
+var lastSucessfulUpdateTest = new Date(all_getValue("TrollExLastSucessfulUpdate", yesterday.toGMTString() ));
 var checkAnyway = false;
 
 
@@ -107,15 +108,15 @@ trollExUpdateLink.appendChild(document.createTextNode("Update installieren"));
 
 // more global variables
 var userRatings;
-var threadRatingWeight = GM_getValue("TrollExThreadRatingWeight", 1);
-var userRatingWeight = GM_getValue("TrollExUserRatingWeight", 25);
-var threadRatingThreshold = GM_getValue("TrollExThreadRatingThreshold", GM_getValue("TrollExThreshold", -50)); // for backwards compability: Read the old name "TrollExThreshold" as well.
-var userRatingThreshold = GM_getValue("TrollExUserRatingThreshold", GM_getValue("TrollExUserThreshold", -2));  // for backwards compability: Read the old name "TrollExUserThreshold" as well.
-var mixedRatingThreshold = GM_getValue("TrollExMixedRatingThreshold", -100);
+var threadRatingWeight = all_getValue("TrollExThreadRatingWeight", 1);
+var userRatingWeight = all_getValue("TrollExUserRatingWeight", 25);
+var threadRatingThreshold = all_getValue("TrollExThreadRatingThreshold", all_getValue("TrollExThreshold", -50)); // for backwards compability: Read the old name "TrollExThreshold" as well.
+var userRatingThreshold = all_getValue("TrollExUserRatingThreshold", all_getValue("TrollExUserThreshold", -2));  // for backwards compability: Read the old name "TrollExUserThreshold" as well.
+var mixedRatingThreshold = all_getValue("TrollExMixedRatingThreshold", -100);
 
-var useThreadThreshold = GM_getValue("TrollExUseThreadThreshold", true);
-var useUserThreshold = GM_getValue("TrollExUseUserThreshold", true);
-var useMixedThreshold = GM_getValue("TrollExUseMixedThreshold", true);
+var useThreadThreshold = all_getValue("TrollExUseThreadThreshold", true);
+var useUserThreshold = all_getValue("TrollExUseUserThreshold", true);
+var useMixedThreshold = all_getValue("TrollExUseMixedThreshold", true);
 
 var normalThreadsCount = 0;
 var badThreadsCount = 0;
@@ -123,11 +124,37 @@ var badThreadRatingCount = 0;
 var badUserRatingCount = 0;
 var badMixedRatingCount = 0;
 
-var mergePagesCount = parseInt(GM_getValue("TrollExMergePagesCount", 3));
+var mergePagesCount = parseInt(all_getValue("TrollExMergePagesCount", 3));
 var pageCount;
 
 
 // ** functions **
+
+function all_getValue(key, defaultValue) {
+	if (navigator.userAgent.search('Chrome') == -1) {
+		return GM_getValue(key, defaultValue);
+	} else {
+		return chrome_getValue(key, defaultValue);
+	}
+}
+function all_setValue(key, value) {
+	if (navigator.userAgent.search('Chrome') == -1) {
+		return GM_setValue(key, value);
+	} else {
+		return chrome_setValue(key, value);
+	}
+}
+
+function chrome_getValue(key, defaultValue) {
+	var value = localStorage[key];
+	if (!value) {
+		value = defaultValue;
+	}
+	return value;
+}
+function chrome_setValue(key, value) {
+	localStorage[key] = value;
+}
 
 function checkForUpdates() {
 	now = new Date();
@@ -175,7 +202,7 @@ function updateVersionLoaded(responseDetails){
 				trollExUpdateContainer.appendChild(document.createTextNode("TrollEx (Version "+trollExDisplayVersion+") ist aktuell!"));
 				trollExUpdateContainer.appendChild(document.createTextNode(" Überprüft am "+ lastSucessfulUpdateTest.toLocaleString()+" "));
 				trollExUpdateContainer.appendChild(checkNow);
-				GM_setValue("TrollExLastSucessfulUpdate", lastSucessfulUpdateTest.toGMTString()); 
+				all_setValue("TrollExLastSucessfulUpdate", lastSucessfulUpdateTest.toGMTString()); 
 			}
 		} else {
 			trollExUpdateContainer.appendChild(document.createTextNode("TrollEx hat Probleme bei der Kommunikation mit dem Server."));
@@ -486,27 +513,27 @@ function parseDate(dateString){
 }
 
 function readThreadSortModes(){
-	var normal = GM_getValue("TrollExNormalTheadsSorting", "userThreadRating:false").split(":");
+	var normal = all_getValue("TrollExNormalTheadsSorting", "userThreadRating:false").split(":");
 	normalThreadsSortMode = getThreadsSortModeByName(normal[0]);
 	normalThreadsSortSubThreads = parseBool(normal[1]);
 
-	var badThreads = GM_getValue("TrollExBadTheadsSorting", "threadRating:false").split(":");
+	var badThreads = all_getValue("TrollExBadTheadsSorting", "threadRating:false").split(":");
 	badThreadsSortMode = getThreadsSortModeByName(badThreads[0]);
 	badThreadsSortSubThreads = parseBool(badThreads[1]);
 	
-	var badUser = GM_getValue("TrollExBadUserTheadsSorting", "userRating:false").split(":");
+	var badUser = all_getValue("TrollExBadUserTheadsSorting", "userRating:false").split(":");
 	badUserThreadsSortMode = getThreadsSortModeByName(badUser[0]);
 	badUserThreadsSortSubThreads = parseBool(badUser[1]);
 }
 
 function writeThreadSortModes(){
-	GM_setValue("TrollExNormalTheadsSorting", normalThreadsSortMode.name+":"+normalThreadsSortSubThreads);
-	GM_setValue("TrollExBadTheadsSorting", badThreadsSortMode.name+":"+badThreadsSortSubThreads);
-	GM_setValue("TrollExBadUserTheadsSorting", badUserThreadsSortMode.name+":"+badUserThreadsSortSubThreads);
+	all_setValue("TrollExNormalTheadsSorting", normalThreadsSortMode.name+":"+normalThreadsSortSubThreads);
+	all_setValue("TrollExBadTheadsSorting", badThreadsSortMode.name+":"+badThreadsSortSubThreads);
+	all_setValue("TrollExBadUserTheadsSorting", badUserThreadsSortMode.name+":"+badUserThreadsSortSubThreads);
 }
 
 function readUserRatings(){
-	var allRatings = GM_getValue("TrollExUserRatings", "");
+	var allRatings = all_getValue("TrollExUserRatings", "");
 	if(allRatings == ""){
 		userRatings = new Array();
 	}else{
@@ -515,7 +542,7 @@ function readUserRatings(){
 }
 
 function writeUserRatings(){
-	GM_setValue("TrollExUserRatings", userRatings.join(","));
+	all_setValue("TrollExUserRatings", userRatings.join(","));
 }
 
 function getRatingOf(user){
@@ -666,7 +693,7 @@ function getRatingDisplay(rating){
 function factoryAdjustThreshold(adjust){
 	return function(event){
 		threadRatingThreshold= parseInt(threadRatingThreshold) + parseInt(adjust);
-		GM_setValue("TrollExThreadRatingThreshold", threadRatingThreshold);
+		all_setValue("TrollExThreadRatingThreshold", threadRatingThreshold);
 		t = document.getElementById("TrollExThreadRatingThreshold");
 		t.removeChild(t.firstChild);
 		t.appendChild(document.createTextNode(" "+threadRatingThreshold+"% "));
@@ -676,7 +703,7 @@ function factoryAdjustThreshold(adjust){
 function factoryAdjustUserThreshold(adjust){
 	return function(event){
 		userRatingThreshold= parseInt(userRatingThreshold) + parseInt(adjust);
-		GM_setValue("TrollExUserRatingThreshold", userRatingThreshold);
+		all_setValue("TrollExUserRatingThreshold", userRatingThreshold);
 		t = document.getElementById("TrollExUserRatingThreshold");
 		t.removeChild(t.firstChild);
 		t.appendChild(document.createTextNode(" "+userRatingThreshold+" "));
@@ -686,7 +713,7 @@ function factoryAdjustUserThreshold(adjust){
 function factoryAdjustMixedThreshold(adjust){
 	return function(event){
 		mixedRatingThreshold= parseInt(mixedRatingThreshold) + parseInt(adjust);
-		GM_setValue("TrollExMixedRatingThreshold", mixedRatingThreshold);
+		all_setValue("TrollExMixedRatingThreshold", mixedRatingThreshold);
 		t = document.getElementById("TrollExMixedRatingThreshold");
 		t.removeChild(t.firstChild);
 		t.appendChild(document.createTextNode(" "+mixedRatingThreshold+" "));
@@ -702,7 +729,7 @@ function factoryAdjustMergePages(adjust){
 			newValue = 60;
 		}
 		mergePagesCount = newValue;
-		GM_setValue("TrollExMergePagesCount", newValue);
+		all_setValue("TrollExMergePagesCount", newValue);
 		var dispElement = document.getElementById("mergePagesDisp");
 		dispElement.firstChild.data = newValue;
 	}
@@ -766,10 +793,10 @@ function createSubThreadSortCheckBox(name, func){
 
 function updateVisibility(){
 
-	badThreadsVisible = GM_getValue("TrollExBadThreadsVisibility", false);
-	badUsersVisible = GM_getValue("TrollExBadUsersVisibility", false);
-	badMixedVisible = GM_getValue("TrollExBadMixedThreadsVisibility", false);
-	userRatingVisible = GM_getValue("TrollExUserRatingVisibility", false);
+	badThreadsVisible = all_getValue("TrollExBadThreadsVisibility", false);
+	badUsersVisible = all_getValue("TrollExBadUsersVisibility", false);
+	badMixedVisible = all_getValue("TrollExBadMixedThreadsVisibility", false);
+	userRatingVisible = all_getValue("TrollExUserRatingVisibility", false);
 	
 	if(badThreadsVisible) {
 		if(badThreadRatingCount > 0){
@@ -834,30 +861,30 @@ function updateVisibility(){
 }
 
 function switchBadThreadsVisibilty() {
-	visible = GM_getValue("TrollExBadThreadsVisibility", false);
+	visible = all_getValue("TrollExBadThreadsVisibility", false);
 	visible = !visible;
-	GM_setValue("TrollExBadThreadsVisibility", visible);
+	all_setValue("TrollExBadThreadsVisibility", visible);
 	updateVisibility();	
 }
 
 function switchBadUsersVisibilty() {
-	visible = GM_getValue("TrollExBadUsersVisibility", false);
+	visible = all_getValue("TrollExBadUsersVisibility", false);
 	visible = !visible;
-	GM_setValue("TrollExBadUsersVisibility", visible);
+	all_setValue("TrollExBadUsersVisibility", visible);
 	updateVisibility();
 }
 
 function switchMixedVisibilty() {
-	visible = GM_getValue("TrollExBadMixedThreadsVisibility", false);
+	visible = all_getValue("TrollExBadMixedThreadsVisibility", false);
 	visible = !visible;
-	GM_setValue("TrollExBadMixedThreadsVisibility", visible);
+	all_setValue("TrollExBadMixedThreadsVisibility", visible);
 	updateVisibility();
 }
 
 function switchUserRatingVisibilty() {
-	visible = GM_getValue("TrollExUserRatingVisibility", false);
+	visible = all_getValue("TrollExUserRatingVisibility", false);
 	visible = !visible;
-	GM_setValue("TrollExUserRatingVisibility", visible);
+	all_setValue("TrollExUserRatingVisibility", visible);
 	updateVisibility();
 }
 
@@ -917,7 +944,7 @@ function createUserRatingList(){
 			userRatingList.appendChild(line);
 		}
 	}
-	userRatingVisible = GM_getValue("TrollExUserRatingVisibility", false);
+	userRatingVisible = all_getValue("TrollExUserRatingVisibility", false);
 	if(userRatingVisible) {
 		userRatingListContainer.appendChild(userRatingList);
 		userRatingVisibilityButton.firstChild.data= "Ausblenden";
@@ -1452,7 +1479,7 @@ cb.setAttribute("value", "true");
 if(useThreadThreshold) {
 	cb.setAttribute("checked", "checked");
 }
-cb.addEventListener('change', function() { useThreadThreshold = !useThreadThreshold; GM_log("useThreadThreshold = "+useThreadThreshold); GM_setValue("TrollExUseThreadThreshold", useThreadThreshold); }, true);
+cb.addEventListener('change', function() { useThreadThreshold = !useThreadThreshold; GM_log("useThreadThreshold = "+useThreadThreshold); all_setValue("TrollExUseThreadThreshold", useThreadThreshold); }, true);
 filterLI.appendChild(cb);
 
 filterLI.appendChild(document.createTextNode("die schlechter als "));
@@ -1479,7 +1506,7 @@ cb.setAttribute("value", "true");
 if(useUserThreshold) {
 	cb.setAttribute("checked", "checked");
 }
-cb.addEventListener('change', function() {useUserThreshold = !useUserThreshold; GM_setValue("TrollExUseUserThreshold", useUserThreshold)}, true);
+cb.addEventListener('change', function() {useUserThreshold = !useUserThreshold; all_setValue("TrollExUseUserThreshold", useUserThreshold)}, true);
 filterLI.appendChild(cb);
 
 filterLI.appendChild(document.createTextNode("die von Usern geschrieben wurden, welche schlechter als "));
@@ -1506,7 +1533,7 @@ cb.setAttribute("value", "true");
 if(useMixedThreshold) {
 	cb.setAttribute("checked", "checked");
 }
-cb.addEventListener('change', function() {useMixedThreshold = !useMixedThreshold; GM_setValue("TrollExUseMixedThreshold", useMixedThreshold); }, true);
+cb.addEventListener('change', function() {useMixedThreshold = !useMixedThreshold; all_setValue("TrollExUseMixedThreshold", useMixedThreshold); }, true);
 filterLI.appendChild(cb);
 
 filterLI.appendChild(document.createTextNode("bei denen der Bewertungsmix schlechter als "));
@@ -1561,7 +1588,7 @@ if(userRatings.length > 0){
 	tmp.style.visibility ="hidden";
 	userRatingListTitle.appendChild(tmp);
 	userRatingListTitle.appendChild(userRatingVisibilityButton);
-	if(GM_getValue("TrollExUserRatingVisibility", false)){
+	if(all_getValue("TrollExUserRatingVisibility", false)){
 		userRatingListTitle.appendChild(userRatingSortButtonsContainer);
 	}
 }
