@@ -3,6 +3,9 @@
 // @namespace     http://www.informatik.uni-freiburg.de/schnllm~
 // @description   Heise TrollEx Version 0.90. Erhöht den Komfort des Heise Forums.
 // @include       http://www.heise.de/*foren/*
+// @grant         GM_getValue
+// @grant         GM_setValue
+// @grant         GM_log
 // ==/UserScript==
 
 // Originally programmed by Hannes Planatscher © 2005, 2006 (http://www.planatscher.net/)
@@ -1021,7 +1024,12 @@ function moveThreads(listOfThreads, pageNo){
 			}
 		}
 		if(nameNode){
-			username = trimName(nameNode.innerHTML);
+			var linkedName = document.evaluate("./a/text()[1]" ,nameNode , null, XPathResult.ORDERED_NODE_SNAPSHOT_TYPE, null);
+			if (linkedName.snapshotItem(0) == null) {
+				username = trimName(nameNode.innerHTML);
+			} else {
+				username = linkedName.snapshotItem(0).nodeValue;
+			}
 		}
 		
 		// detremine the thread rating
@@ -1082,7 +1090,7 @@ function moveThreads(listOfThreads, pageNo){
 
 		config.appendChild(createButton("+", "Bewertung von "+ username + " um einen Punkt verbessern", factoryAdjustRating(username, 1)));
 		
-		nameNode.firstChild.data = " "+username;
+		nameNode.firstChild.innerHTML = " "+username;
 		nameNode.insertBefore(config, nameNode.firstChild);
 		
 		// set some attributes for the later use (sorting the list)
